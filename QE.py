@@ -1,34 +1,47 @@
 #!/usr/bin/env python
 # -*- coding:utf-8
+#BSUB -q "lantana.q"
+##BSUB -q "bitra.q"
+#BSUB -n 32
+#BSUB -J "pw214"
+#BSUB -o out.o
+#BSUB -m "lantana2"
+##BSUB -m "bitra3"
+
 prefix='Sr2RuO4'
 
 space=139
 aa=3.8603; ab=aa; ac=12.729
-zp1,zp=(0.35316,0.1619)
+za,zp=(0.35316,0.1619)
 
 axis=[aa,ab,ac]
 deg=[90,90,90]
 atom=['Sr','Ru','O']
-atomic_position=[[[0.,0.,zp1],[0.,0.,1-zp1]],
+atomic_position=[[[0.,0.,za],[0.,0.,1-za]],
                  [[0.,0.,0.]],
                  [[0.,0.5,0.],[0.5,0.,0.],[0.,0.,zp],[0.,0.,1-zp]]]
 ibrav=0
 type_xc='pbe'
-pot_type=['%s.%s-nsp-van','%s.%s-n-van','%s.%s-kjpaw_psl.0.1']
-psude_dir='/home/Apps/upf_files/'
+pot_type=['%s.%s-nsp-van','%s.%s-n-van','%s.%s-n-kjpaw_psl.0.1']
+pseude_dir='/home/Apps/upf_files/'
 
 sw_bands=False
 sw_ph=True
 sw_wan=False
 sw_restart=True
 
+sw_run = True
+sw_mpi = True
+mpi_num = 32
+kthreads_num = 4
+
 #=====================pw_parameters================================
-k_mesh_scf=10
+k_mesh_scf=12
 k_mesh_bands=20
 k_mesh_wannier=8
 ecut=60.0
 ec_rho=600
-conv=1.0e-9
+conv=2.0e-9
 nband=50
 deg=0.025
 eband_win=[-3,3]
@@ -38,7 +51,9 @@ q_mesh_bands=20
 q_mesh_dos=8
 pband_win=[0,900]
 #======================pw_&_ph_common_parameter====================
-k_list=[['Gamma',0.,0.,0.],['X',0.5,0.,0.],['M',0.5,0.5,0.],['Gamma',0.,0.,0.]]
+#k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.]],['M',[0.5,0.5,0.]],['G',[0.,0.,0.]]]
+k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],['P',[0.25,0.75,-0.25]],
+        ['N',[0.,0.5,0.]],['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]]
 #===================Wannier_parameters=============================
 nwann=10                     #number of wannier
 dis_win=[-3.00,4.00]         #max(min)_window
@@ -69,8 +84,8 @@ outdir='./'
 fildvscf="'.dvscf'"
 fildyn="'%s.dyn'"%prefix
 flfrc='%s.fc'%prefix
-restart='.True.' if sw_restart else '.False.'
-
+recover='.True.' if sw_restart else '.False.'
+restart="'from_scratch'"
 try:
     brav
 except NameError:
@@ -102,7 +117,7 @@ except NameError:
             brav='P'
 #======================modules=====================================
 import numpy as np
-import os
+import os,datetime
 #=====================functions====================================
 def write_file(name,stream):
     f=open(name,'w')
@@ -115,6 +130,19 @@ def check_type(obj,typ):
         exit()
     else:
         pass
+
+def date():
+    from locale import setlocale, LC_ALL
+    d=datetime.datetime.today()
+    setlocale(LC_ALL,'')
+    if os.environ['LANG'].find('ja')!=-1:
+        print(d.strftime('%Y年  %B %d日 %A %H:%M:%S JST'))
+    else:
+        print(d.strftime('%a %b %d %X JST %Y'))
+
+def os_and_print(command):
+    print(command)
+    os.system(command)
 
 def get_ef(name,ext):
     fname='%s.%s.out'%(name,ext)
@@ -167,7 +195,7 @@ def cell_parameter_stream(axis,deg):
     mat_ax=np.array([[axis[0],0,0],[0,axis[1],0],[0,0,axis[2]]])
     mat=get_cr_mat(brav)
     a_vec=list(mat.dot(mat_ax))
-    cell_string='cell_parameters\n'
+    cell_string='CELL_PARAMETERS\n'
     for aa in a_vec:
         cell_string=cell_string+'  %12.9f  %12.9f  %12.9f\n'%tuple(aa)
     cell_string=cell_string+'\n'
@@ -178,10 +206,10 @@ def atomic_parameters_stream(atom,atomic_position,UPF):
     mat=get_cr_mat(brav)
     mat=np.linalg.inv(mat).T
     aposition=[[list(mat.dot(np.array(ap))) for ap in app] for app in atomic_position]
-    atom_string='\natomic_species\n'
+    atom_string='\nATOMIC_SPECIES\n'
     for at,up in zip(atom,UPF):
-        atom_string=atom_string+'%2s  %11.7f  %s\n'%(at,mass[at],up)
-    atom_string=atom_string+'\natomic_positions (crystal)\n'
+        atom_string=atom_string+' %-2s %11.7f  %s\n'%(at,mass[at],up)
+    atom_string=atom_string+'\nATOMIC_POSITIONS crystal\n'
     for i,at in enumerate(atom):
         for ap in aposition[i]:
             atom_string=atom_string+'%2s  %12.9f %12.9f %12.9f\n'%tuple([at]+ap)
@@ -194,7 +222,7 @@ def k_line_stream(k_num,k_list):
     w=1.
     wt=' %f'%w if True else ''
     for kb,ka in zip(k_list,k_list[1:]):
-        kp=[kaa-kbb for kaa,kbb in zip(ka[1:],kb[1:])]
+        kp=[kaa-kbb for kaa,kbb in zip(ka[1],kb[1])]
         for i in range(k_num):
             k_string=k_string+'%f %f %f'%(kp[0]*i,kp[1]*i,kp[2]*i)+wt+'\n'
     return k_string
@@ -241,10 +269,10 @@ def make_pw_in(calc):
     fext='nscf' if calc in ['nscf','bands'] else 'scf'
     fname='%s.%s'%(prefix,fext)
     fstream=''
-    var_control=['title','calculation','restart_mode','outdir','psude_dir',
+    var_control=['title','calculation','restart_mode','outdir','pseudo_dir',
                  'prefix','etot_conv_thr','forc_conv_thr','nstep','tstress','tprnfor']
-    val_control={'title':prefix,'calculation':calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
-                 'psude_dir':"'%s'"%psude_dir,'prefix':prefix,'etot_conv_thr':conv,'forc_conv_thr':conv,
+    val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
+                 'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':conv,'forc_conv_thr':conv,
                  'nstep':100,'tstress':'.True.','tprnfor':'.True.'}
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream=fstream+fs_control
@@ -292,6 +320,25 @@ def make_pw_in(calc):
     write_file(fname,fstream)
 
 def make_bands_in():
+    fname='%s.bands_in'%prefix
+    fstream=''
+    filband='%s_bands.dat'%prefix
+    var_bands=['prefix','outdir','filband']
+    val_bands={'prefix':prefix,'outdir':"'%s'"%outdir,'filband':filband}
+    fs_bands=make_fstring_obj('bands',var_bands,val_bands,'bands')
+    fstream=fstream+fs_bands
+    write_file(fname,fstream)
+
+def make_pw2wan_in():
+    fname='%s.pw2wan'%prefix
+    fstream='\n'
+    var_bands=[]
+    val_bands={}
+    fs_bands=make_fstring_obj('pw2wan',var_bands,val_bands,'pw2wan')
+    fstream=fstream+fs_bands
+    write_file(fname,fstream)
+
+def make_win():
     pass
 
 def make_ph_in():
@@ -300,7 +347,7 @@ def make_ph_in():
     var_inputph=['tr2_ph','prefix','fildyn','trans','ldisp','recover',
                  'outdir','fildvscf','electron_phonon','nq1','nq2','nq3']
     val_inputph={'tr2_ph':1.0e-14,'prefix':"'%s'"%prefix,'fildyn':fildyn,'fildvscf':fildvscf,
-                 'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','recover':restart,
+                 'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','recover':recover,
                  'electron_phonon':"'interpolated'",
                  'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
     fs_inputph=make_fstring_obj('inputph',var_inputph,val_inputph,'ph')
@@ -355,22 +402,42 @@ def make_plotband_in(mode,win):
         win_min=0
         win_max=win[1]
     format=(name,fext,win_min,win_max,name,name,ef,nband,ef)
-    fstream='%s.%s\n%d %d\n%s.xmgr\n%s.ps\n%f\n%f %f\n'%format
+    fstream='%s.%s\n%d %d\n%s.xmgr\n%s.ps\n%9.5f\n%6.2f %6.2f\n'%format
     write_file(fname,fstream)
 
 def main(prefix):
+    date()
+    mpiexe='$LSF_BINDIR/openmpi-mpirun -np %d'%mpi_num if sw_mpi else ''
     make_pw_in('scf')
+    if sw_run:
+        os_and_print('%s pw.x -nk %d <%s.scf>%s.scf.out'%(mpiexe,kthreads_num,prefix,prefix))
     if sw_bands:
         make_pw_in('bands')
+        if sw_run:
+            os_and_print('%s pw.x -nk %d <%s.bands>%s.bands.out'%(mpiexe,kthreads_num,prefix,prefix))
         make_bands_in()
         make_plotband_in(True,eband_win)
+        if sw_run:
+            os_and_print('plotbands.x <eband.plotband>eband.plotband.out')
         if sw_wan:
             make_pw_in('nscf')
     if sw_ph:
         make_ph_in()
+        if sw_run:
+            os_and_print('%s ph.x -nk %d <%s.ph>%s.ph.out'%(mpiexe,kthreads_num,prefix,prefix))
         make_q2r()
+        if sw_run:
+            os_and_print('%s q2r.x -nk %d <%s.q2r>%s.q2r.out'%(mpiexe,kthreads_num,prefix,prefix))
         make_matdyn(False)
+        if sw_run:
+            os_and_print('%s matdyn.x -nk %d <%s.matdyn>%s.matdyn.out'%(mpiexe,kthreads_num,prefix,prefix))
         make_matdyn(True)
+        if sw_run:
+            os_and_print('%s matdyn.x -nk %d <%s.freq>%s.freq.out'%(mpiexe,kthreads_num,prefix,prefix))
         make_plotband_in(False,pband_win)
+        if sw_run:
+            os_and_print('plotband.x <pband.plotband>pband.plotband.out')
+        date()
+
 if __name__=="__main__":
     main(prefix)
