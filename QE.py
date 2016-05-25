@@ -25,13 +25,15 @@ type_xc='pbe'
 pot_type=['%s.%s-nsp-van','%s.%s-n-van','%s.%s-n-kjpaw_psl.0.1']
 pseude_dir='/home/Apps/upf_files/'
 
-sw_bands=False
-sw_ph=True
-sw_wan=False
-sw_restart=True
+(T,F)=(True,False)
 
-sw_run = True
-sw_mpi = True
+sw_bands=F
+sw_ph=T
+sw_wan=F
+sw_restart=T
+
+sw_run = T
+sw_mpi = T
 mpi_num = 32
 kthreads_num = 4
 
@@ -41,7 +43,7 @@ k_mesh_bands=20
 k_mesh_wannier=8
 ecut=60.0
 ec_rho=600
-conv=2.0e-9
+conv=1.0e-5
 nband=50
 deg=0.025
 eband_win=[-3,3]
@@ -59,8 +61,8 @@ nwann=10                     #number of wannier
 dis_win=[-3.00,4.00]         #max(min)_window
 frz_win=[-0.0,0.0]           #froz_window
 projection=[['Fe','d']]      #projections
-sw_fs_plot= False            #plot Fermi surface
-unk=False                    #Bloch(Wannier)_func
+sw_fs_plot= F                #plot Fermi surface
+unk=F                        #Bloch(Wannier)_func
 #================physical parameter================================
 bohr=round(0.52917721092,6); ibohr=1.0/bohr
 mass={'H':1.00794,'He':4.002602,
@@ -81,7 +83,7 @@ mass={'H':1.00794,'He':4.002602,
 #=====================global_variables=============================
 UPF=[pp%(at,type_xc)+'.UPF' for pp,at in zip(pot_type,atom)]
 outdir='./'
-fildvscf="'.dvscf'"
+fildvscf="'dvscf'"
 fildyn="'%s.dyn'"%prefix
 flfrc='%s.fc'%prefix
 recover='.True.' if sw_restart else '.False.'
@@ -90,19 +92,20 @@ try:
     brav
 except NameError:
     if isinstance(space,int):
-        if space in [23,139]:
+        if space in [23,24,44,45,46,71,72,73,74,79,80,82,87,88,97,98,107,108,109,110,119,120,121,122,139,
+                     140,141,142,197,199,204,206,211,214,217,220,229,230]:
             brav='I'
-        elif space in [22]:
+        elif space in [22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228]:
             brav='F'
-        elif space in [146]:
+        elif space in [146,148,155,160,161,166,167]:
             brav='R'
-        elif space in [38]:
+        elif space in [38,39,40,41]:
             brav='A'
-        elif space in [5,8,9,12,15]:
+        elif space in [5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68]:
             brav='C'
         else:
             brav='P'
-    if isinstance(space,str):
+    elif isinstance(space,str):
         if 'I' in space:
             brav='I'
         elif 'F' in space:
@@ -176,19 +179,33 @@ def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
 def get_cr_mat(brav):
     if brav=='P':
         if False:
-            mat=np.array([[1.,0.,0.],[-0.5,np.sqrt(3.)*0.5,0.],[0.,0.,1.]])
+            mat=np.array([[ 1. ,0.             ,0.],
+                          [-0.5,np.sqrt(3.)*0.5,0.],
+                          [ 0. ,0.             ,1.]])
         else:
-            mat=np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]])
+            mat=np.array([[1.,0.,0.],
+                          [0.,1.,0.],
+                          [0.,0.,1.]])
     elif brav=='I':
-        mat=np.array([[0.5,-0.5,0.5],[0.5,0.5,0.5],[-0.5,-0.5,0.5]])
+        mat=np.array([[ 0.5,-0.5,0.5],
+                      [ 0.5, 0.5,0.5],
+                      [-0.5,-0.5,0.5]])
     elif brav=='F':
-        mat=np.array([[-0.5,0.,0.5],[0.,0.5,0.5],[-0.5,0.5,0.]])
+        mat=np.array([[-0.5,0. ,0.5],
+                      [ 0. ,0.5,0.5],
+                      [-0.5,0.5,0.]])
     elif brav=='C':
-        mat=np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]])
+        mat=np.array([[ 0.5,0.5,0.],
+                      [-0.5,0.5,0.],
+                      [ 0. ,0. ,1.]])
     elif brav=='A':
-        mat=np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]])
+        mat=np.array([[1.,0.,0.],
+                      [0.,1.,0.],
+                      [0.,0.,1.]])
     elif brav=='R':
-        mat=np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]])
+        mat=np.array([[1.,0.,0.],
+                      [0.,1.,0.],
+                      [0.,0.,1.]])
     return mat
 
 def cell_parameter_stream(axis,deg):
@@ -217,14 +234,14 @@ def atomic_parameters_stream(atom,atomic_position,UPF):
     return atom_string
 
 def k_line_stream(k_num,k_list):
-    k_string='%d\n'%k_num
+    k_string='%d\n'%(k_num*len(k_list))
     dk=1./k_num
     w=1.
     wt=' %f'%w if True else ''
     for kb,ka in zip(k_list,k_list[1:]):
-        kp=[kaa-kbb for kaa,kbb in zip(ka[1],kb[1])]
+        kp=[(kaa-kbb)*dk for kaa,kbb in zip(ka[1],kb[1])]
         for i in range(k_num):
-            k_string=k_string+'%f %f %f'%(kp[0]*i,kp[1]*i,kp[2]*i)+wt+'\n'
+            k_string=k_string+'%9.6f %9.6f %9.6f'%(kp[0]*i,kp[1]*i,kp[2]*i)+wt+'\n'
     return k_string
 
 def k_cube_stream(k_num,w_sw):
@@ -273,7 +290,7 @@ def make_pw_in(calc):
                  'prefix','etot_conv_thr','forc_conv_thr','nstep','tstress','tprnfor']
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':conv,'forc_conv_thr':conv,
-                 'nstep':100,'tstress':'.True.','tprnfor':'.True.'}
+                 'nstep':400,'tstress':'.True.','tprnfor':'.True.'}
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream=fstream+fs_control
 
@@ -286,7 +303,7 @@ def make_pw_in(calc):
     fstream=fstream+fs_system
 
     var_electrons=['diagonalization','conv_thr']
-    val_electrons={'diagonalization':"'david'",'conv_thr':1.0e-11}
+    val_electrons={'diagonalization':"'david'",'conv_thr':1.0e-12}
     fs_electrons=make_fstring_obj('electrons',var_electrons,val_electrons,'pw')
     fstream=fstream+fs_electrons
 
@@ -357,7 +374,8 @@ def make_ph_in():
 def make_q2r():
     fname='%s.q2r'%(prefix)
     fstream=''
-    fs_input=make_fstring_obj('input',['fildyn','flfrc'],{'fildyn':fildyn,'flfrc':flfrc},'q2r')
+    fs_input=make_fstring_obj('input',['fildyn','flfrc','la2F'],
+                              {'fildyn':fildyn,'flfrc':"'%s'"%flfrc,'la2F':'.True.'},'q2r')
     fstream=fstream+fs_input
     write_file(fname,fstream)
 
