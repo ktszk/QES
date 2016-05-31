@@ -5,8 +5,9 @@
 #BSUB -n 32
 #BSUB -J "pw214"
 #BSUB -o out.o
-#BSUB -m "lantana2"
+#BSUB -m "lantana1"
 ##BSUB -m "bitra3"
+(T,F)=(True,False)
 
 prefix='Sr2RuO4'
 
@@ -25,14 +26,12 @@ type_xc='pbe'
 pot_type=['%s.%s-nsp-van','%s.%s-n-van','%s.%s-n-kjpaw_psl.0.1']
 pseude_dir='/home/Apps/upf_files/'
 
-(T,F)=(True,False)
-
 sw_bands=F
 sw_ph=T
 sw_wan=F
 sw_restart=T
 
-sw_run = T
+sw_run = F
 sw_mpi = T
 mpi_num = 32
 kthreads_num = 4
@@ -41,8 +40,8 @@ kthreads_num = 4
 k_mesh_scf=12
 k_mesh_bands=20
 k_mesh_wannier=8
-ecut=60.0
-ec_rho=600
+ecut=80.0
+ec_rho=800
 conv=1.0e-5
 nband=50
 deg=0.025
@@ -53,9 +52,10 @@ q_mesh_bands=20
 q_mesh_dos=8
 pband_win=[0,900]
 #======================pw_&_ph_common_parameter====================
-#k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.]],['M',[0.5,0.5,0.]],['G',[0.,0.,0.]]]
+#k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.]],['M',[0.5,0.5,0.]],['G',[0.,0.,0.]]] #Ptetra
 k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],['P',[0.25,0.75,-0.25]],
-        ['N',[0.,0.5,0.]],['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]]
+        ['N',[0.,0.5,0.]],['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]] #Itetra
+#k_list=[['G',[0.,0.,0.]],['M',[0.5,0.,0.]],['K',[1./3,1./3,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
 #===================Wannier_parameters=============================
 nwann=10                     #number of wannier
 dis_win=[-3.00,4.00]         #max(min)_window
@@ -63,8 +63,12 @@ frz_win=[-0.0,0.0]           #froz_window
 projection=[['Fe','d']]      #projections
 sw_fs_plot= F                #plot Fermi surface
 unk=F                        #Bloch(Wannier)_func
+#======================modules=====================================
+import numpy as np
+import os,datetime
 #================physical parameter================================
-bohr=round(0.52917721092,6); ibohr=1.0/bohr
+bohr=round(0.52917721092,6)
+ibohr=1.0/bohr
 mass={'H':1.00794,'He':4.002602,
       'Li':6.941,'Be':9.012182,'B':10.811,'C':12.0107,'N':14.0067,'O':15.9994,'F':18.9984032,'Ne':20.1797,
       'Na':22.98977,'Mg':24.305,'Al':26.981538,'Si':28.0855,'P':30.973761,'S':32.065,'Cl':35.453,'Ar':39.948,
@@ -90,7 +94,15 @@ recover='.True.' if sw_restart else '.False.'
 restart="'from_scratch'"
 try:
     brav
+    try:
+        hexa
+    except NameError:
+        if isinstance(space, int):
+            hexa=T if space in [191] else F
+        elif isinstance(space, str):
+            hexa=T if '6' in space else F
 except NameError:
+    hexa=F
     if isinstance(space,int):
         if space in [23,24,44,45,46,71,72,73,74,79,80,82,87,88,97,98,107,108,109,110,119,120,121,122,139,
                      140,141,142,197,199,204,206,211,214,217,220,229,230]:
@@ -105,6 +117,8 @@ except NameError:
             brav='C'
         else:
             brav='P'
+            if space in [191]:
+                hexa=T
     elif isinstance(space,str):
         if 'I' in space:
             brav='I'
@@ -118,9 +132,8 @@ except NameError:
             brav='R'
         else:
             brav='P'
-#======================modules=====================================
-import numpy as np
-import os,datetime
+            if '6' in space:
+                hexa=T
 #=====================functions====================================
 def write_file(name,stream):
     f=open(name,'w')
@@ -176,9 +189,9 @@ def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
     fstring=fstring+'/\n'
     return fstring
 
-def get_cr_mat(brav):
+def get_cr_mat(brav,hexa):
     if brav=='P':
-        if False:
+        if hexa:
             mat=np.array([[ 1. ,0.             ,0.],
                           [-0.5,np.sqrt(3.)*0.5,0.],
                           [ 0. ,0.             ,1.]])
@@ -209,8 +222,8 @@ def get_cr_mat(brav):
     return mat
 
 def cell_parameter_stream(axis,deg):
-    mat_ax=np.array([[axis[0],0,0],[0,axis[1],0],[0,0,axis[2]]])
-    mat=get_cr_mat(brav)
+    mat_ax=np.array([[axis[0]*ibohr,0,0],[0,axis[1]*ibohr,0],[0,0,axis[2]*ibohr]])
+    mat=get_cr_mat(brav,hexa)
     a_vec=list(mat.dot(mat_ax))
     cell_string='CELL_PARAMETERS\n'
     for aa in a_vec:
@@ -220,7 +233,7 @@ def cell_parameter_stream(axis,deg):
     return cell_string
 
 def atomic_parameters_stream(atom,atomic_position,UPF):
-    mat=get_cr_mat(brav)
+    mat=get_cr_mat(brav,False)
     mat=np.linalg.inv(mat).T
     aposition=[[list(mat.dot(np.array(ap))) for ap in app] for app in atomic_position]
     atom_string='\nATOMIC_SPECIES\n'
