@@ -89,7 +89,7 @@ UPF=[pp%(at,type_xc)+'.UPF' for pp,at in zip(pot_type,atom)]
 outdir='./'
 fildvscf="'dvscf'"
 fildyn="'%s.dyn'"%prefix
-flfrc='%s.fc'%prefix
+flfrc="'%s.fc'"%prefix
 recover='.True.' if sw_restart else '.False.'
 restart="'from_scratch'"
 try:
@@ -247,14 +247,15 @@ def atomic_parameters_stream(atom,atomic_position,UPF):
     return atom_string
 
 def k_line_stream(k_num,k_list):
-    k_string='%d\n'%(k_num*len(k_list))
+    k_string='%d\n'%(k_num*(len(k_list)-1)+1)
     dk=1./k_num
     w=1.
     wt=' %f'%w if True else ''
     for kb,ka in zip(k_list,k_list[1:]):
         kp=[(kaa-kbb)*dk for kaa,kbb in zip(ka[1],kb[1])]
         for i in range(k_num):
-            k_string=k_string+'%9.6f %9.6f %9.6f'%(kp[0]*i,kp[1]*i,kp[2]*i)+wt+'\n'
+            k_string=k_string+'%9.6f %9.6f %9.6f'%(kb[1][0]+kp[0]*i,kb[1][1]+kp[1]*i,kb[1][2]+kp[2]*i)+wt+'\n'
+    k_string=k_string+'%9.6f %9.6f %9.6f'%tuple(k_list[-1][1])+wt+'\n'
     return k_string
 
 def k_cube_stream(k_num,w_sw):
@@ -388,12 +389,12 @@ def make_q2r():
     fname='%s.q2r'%(prefix)
     fstream=''
     fs_input=make_fstring_obj('input',['fildyn','flfrc','la2F'],
-                              {'fildyn':fildyn,'flfrc':"'%s'"%flfrc,'la2F':'.True.'},'q2r')
+                              {'fildyn':fildyn,'flfrc':flfrc,'la2F':'.True.'},'q2r')
     fstream=fstream+fs_input
     write_file(fname,fstream)
 
 def make_matdyn(phband):
-    asr='crystal'
+    asr="'crystal'"
     if phband:
         fext='freq'
         dos=False
