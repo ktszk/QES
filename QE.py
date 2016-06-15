@@ -25,10 +25,14 @@ ibrav=0
 type_xc='pbe'
 pot_type=['%s.%s-nsp-van','%s.%s-n-van','%s.%s-n-kjpaw_psl.0.1']
 pseude_dir='/home/Apps/upf_files/'
+outdir='./'
 
+sw_scf = T
 sw_bands = T
 sw_ph = F
 sw_wan = T
+sw_wan_init_nscf = T
+sw_wan_init = T
 sw_restart = T
 
 sw_run = F
@@ -57,16 +61,17 @@ pband_win=[0,900]
 nwann=10                     #number of wannier
 dis_win=[-3.00,4.00]         #max(min)_window
 frz_win=[-0.0,0.0]           #froz_window
-projection=[('Fe','d')]      #projections
+projection=[('Fe','d')]      #projections list[(tuple)]
 sw_fs_plot= F                #plot Fermi surface
-fermi_mesh = 100
+#fermi_mesh = 100
 unk=F                        #Bloch(Wannier)_func
+uwrite=F
 #======================modules=====================================
 import numpy as np
 import os,datetime
 #=====================global_lambda_expression=====================
 TorF=lambda x:'.True.' if x else '.False.'
-w_conv=lambda a:'1.0E%d'%int(np.log(a))
+w_conv=lambda a:'1.0E%d'%int(np.log10(a))
 #======================pw_&_ph_common_parameter====================
 #k_list=[['G',[0.,0.,0.]],['K',[2./3,0.,0.]],['M',[0.5,-0.5/np.tan(2.*np.pi/3.),0.]],
 #        ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
@@ -93,7 +98,6 @@ mass={'H':1.00794,                                                              
       'Th':232.0381,'Pa':231.03588,'U':238.02891}
 #==========================global_variables========================
 UPF=[pp%(at,type_xc)+'.UPF' for pp,at in zip(pot_type,atom)]
-outdir='./'
 fildvscf="'dvscf'"
 fildyn="'%s.dyn'"%prefix
 flfrc="'%s.fc'"%prefix
@@ -142,6 +146,11 @@ except NameError:
             brav='P'
             if '6' in space:
                 hexa=T
+if sw_fs_plot:
+    try:
+        fermi_mesh
+    except NameError:
+        fermi_mesh=100
 #=====================functions====================================
 def write_file(name,stream):
     f=open(name,'w')
@@ -175,11 +184,11 @@ def get_ef(name,ext):
                 it1=item[1].split('ev')
                 return float(it1[0])
         else:
-            print('input error from %s.%s.out\n'%(name,ext))
-            print('return ef = 0\n')
+            print('input error from %s.%s.out\n'%(name,ext)
+                  +'return ef = 0\n')
             return 0.
     else:
-        print('not find %s\n return ef = 0\n'%fname)
+        print('can not find %s\n return ef = 0\n'%fname)
         return 0.
 
 def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
@@ -187,6 +196,8 @@ def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
         form='%28s = '
     elif sw_form=='ph':
         form='%20s = '
+    elif sw_form=='pw2wan':
+        form='%15s = '
     else:
         form='%12s = '
     fstring='&%s\n'%obj_name
@@ -268,7 +279,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
     if isinstance(k_num,int):
         dk=1./k_num
         wst=wfunc(sw_wan,w_sw,(k_num**3))
-        k_string='%d\n'%k_num**3
+        k_string='' if sw_wan else '%d\n'%k_num**3
         for i in range(k_num):
             for j in range(k_num):
                 for k in range(k_num):
@@ -289,7 +300,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
             for wi in range(kn):
                 w0=w0*wi
         wst=wfunc(sw_wan,w_sw,w0)
-        k_string='%d\n'%w0
+        k_string='' if sw_wan else '%d\n'%w0
         for i in range(kn[0]):
             for j in range(kn[1]):
                 for k in range(kn[2]):
@@ -310,14 +321,16 @@ def make_pw_in(calc):
         atom_string=atom_string+'\n'
         return atom_string
 
-    (fext,convthr) =('nscf',nscf_conv) if calc in ['nscf','bands'] else ('scf',scf_conv)
+    (fext,convthr) =(('nscf' if calc=='nscf' else 'bands',nscf_conv) 
+                     if calc in ['nscf','bands'] else ('scf',scf_conv))
     fname='%s.%s'%(prefix,fext)
     fstream=''
     var_control=['title','calculation','restart_mode','outdir','pseudo_dir',
-                 'prefix','etot_conv_thr','forc_conv_thr','nstep','tstress','tprnfor']
+                 'prefix','etot_conv_thr','forc_conv_thr','nstep','tstress','tprnfor','wf_collect']
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':w_conv(e_conv),
-                 'forc_conv_thr':w_conv(f_conv),'nstep':nstep,'tstress':'.True.','tprnfor':'.True.'}
+                 'forc_conv_thr':w_conv(f_conv),'nstep':nstep,'tstress':'.True.','tprnfor':'.True.',
+                 'wf_collect':'.True.'}
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream=fstream+fs_control
 
@@ -352,7 +365,7 @@ def make_pw_in(calc):
         fs_cellparam='CELL_PARAMETERS\n'+cell_parameter_stream(axis,deg)+'\n'
         fstream=fstream+fs_cellparam
 
-    fstream=fstream+'K_POINTS (%s)\n'%('crystal' if calc in ['nscf, bands'] else 'automatic')
+    fstream=fstream+'K_POINTS (%s)\n'%('crystal' if calc in ['nscf', 'bands'] else 'automatic')
     if calc in ['nscf', 'bands']:
         if calc=='nscf':
             fs_kl_param=k_cube_stream(k_mesh_wannier,T,F)
@@ -428,16 +441,16 @@ def make_win():
     num_val=[['num_bands',nband],['num_wann',nwann]]
     num_strings=win_strings(num_val,'num')
 
-    dis_val=[['dis_win_max',dis_win[0]+ef],['dis_win_min',dis_win[1]+ef],
-             ['dis_froz_max',frz_win[0]+ef],['dis_froz_min',frz_win[1]+ef],['dis_num_iter',300]]
+    dis_val=[['dis_win_max',dis_win[1]+ef],['dis_win_min',dis_win[0]+ef],
+             ['dis_froz_max',frz_win[1]+ef],['dis_froz_min',frz_win[0]+ef],['dis_num_iter',300]]
     dis_strings=win_strings(dis_val,'dis')
 
     plot_val=[['fermi_surface_plot',TorF(sw_fs_plot)],['fermi_energy',ef],
-              ['fermi_surface_num_points',fermi_mesh],['bands_plot','.True.']]
+              ['fermi_surface_num_points',fermi_mesh],['bands_plot','.True.'],['umat_write',TorF(uwrite)]]
     plot_strings=win_strings(plot_val,'plot')
 
     k_path_strings=get_k_point_path()
-    unit_cell_strings='begin unit_cell_cart\n'+cell_parameter_stream(axis,deg)+'end unit_cell_cart\n\n'
+    unit_cell_strings='begin unit_cell_cart\nbohr\n'+cell_parameter_stream(axis,deg)+'end unit_cell_cart\n\n'
     atom_strings='begin atoms_frac\n'+atom_position(atom,atomic_position)+'end atoms_frac\n\n'
     prj_strings=get_projection()
     k_grid_strings=get_grid(k_mesh_wannier)
@@ -497,65 +510,79 @@ def make_plotband_in(mode,win):
     check_type(mode,bool)
     if mode:
         fname='eband.plotband'
-        name=prefix
-        fext='band'
+        name=prefix+'_bands'
+        name_out=prefix
+        fext='dat'
         ef=get_ef(prefix,'scf')
         win_min=win[0]+ef
         win_max=win[1]+ef
     else:
         fname='pband.plotband'
         name='matdyn'
+        name_out='matdyn'
         fext='freq'
         ef=0.
         win_min=0
         win_max=win[1]
-    format=(name,fext,win_min,win_max,name,name,ef,nband,ef)
+    format=(name,fext,win_min,win_max,name_out,name_out,ef,nband,ef)
     fstream='%s.%s\n%d %d\n%s.xmgr\n%s.ps\n%9.5f\n%6.2f %6.2f\n'%format
     write_file(fname,fstream)
 
 def main(prefix):
     date()
-    mpiexe='$LSF_BINDIR/openmpi-mpirun -np %d'%mpi_num if sw_mpi else ''
-    make_pw_in('scf')
-    if sw_run:
-        os_and_print('%s pw.x -nk %d <%s.scf>%s.scf.out'%(mpiexe,kthreads_num,prefix,prefix))
+    mpiexe='$LSF_BINDIR/openmpi-mpirun -np %d '%mpi_num if sw_mpi else ''
+    npool='-nk %d '%kthreads_num if kthreads_num!=0 else ''
+    wan_exe='wan.x'
+    def os_io(prefix,exe):
+        name='%s.%s'%(prefix,exe)
+        return '<%s>%s.out'%tuple([name]*2)
+    if sw_scf:
+        make_pw_in('scf')
+        if sw_run:
+            os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
     if sw_bands:
         make_pw_in('bands')
         if sw_run:
-            os_and_print('%s pw.x -nk %d <%s.bands>%s.bands.out'%(mpiexe,kthreads_num,prefix,prefix))
+            os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'bands'))
         make_bands_in()
+        if sw_run:
+            os_and_print('bands.x '+os_io(prefix,'bands_in'))
         make_plotband_in(True,eband_win)
         if sw_run:
-            os_and_print('plotbands.x <eband.plotband>eband.plotband.out')
-        if sw_wan:
+            os_and_print('plotband.x '+os_io('eband','plotband'))
+    if sw_wan:
+        if sw_wan_init_nscf:
             make_pw_in('nscf')
             if sw_run:
-                os_and_print('%s pw.x -nk %d <%s.nscf>%s.nscf.out'%(mpiexe,kthreads_num,prefix,prefix))
+                os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
+        if sw_wan_init:
             make_win()
             if sw_run:
-                os_and_print('wannier90.x -pp %s'%(mpiexe,prefix))
+                os_and_print('%s -pp %s'%(wan_exe,prefix))
             make_pw2wan_in()
             if sw_run:
-                os_and_print('%s pw2wan.x -nk %d <%s.pw2wan>%s.pw2wan.out'%(mpiexe,kthreads_num,prefix,prefix))
-            if sw_run:
-                os_and_print('wannier90.x %s'%(mpiexe,prefix))
+                os_and_print(mpiexe+'pw2wannier90.x '+os_io(prefix,'pw2wan'))
+                os_and_print('%s %s'%(wan_exe,prefix))
+        else:
+            make_win()
+            os_and_print('%s %s'%(wan_exe,prefix))
     if sw_ph:
         make_ph_in()
         if sw_run:
-            os_and_print('%s ph.x -nk %d <%s.ph>%s.ph.out'%(mpiexe,kthreads_num,prefix,prefix))
+            os_and_print(mpiexe+'ph.x '+npool+os_io(prefix,'ph'))
         make_q2r()
         if sw_run:
-            os_and_print('%s q2r.x -nk %d <%s.q2r>%s.q2r.out'%(mpiexe,kthreads_num,prefix,prefix))
+            os_and_print(mpiexe+'q2r.x '+npool+os_io(prefix,'q2r'))
         make_matdyn(False)
         if sw_run:
-            os_and_print('%s matdyn.x -nk %d <%s.matdyn>%s.matdyn.out'%(mpiexe,kthreads_num,prefix,prefix))
+            os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'matdyn'))
         make_matdyn(True)
         if sw_run:
-            os_and_print('%s matdyn.x -nk %d <%s.freq>%s.freq.out'%(mpiexe,kthreads_num,prefix,prefix))
+            os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'freq'))
         make_plotband_in(False,pband_win)
         if sw_run:
-            os_and_print('plotband.x <pband.plotband>pband.plotband.out')
-        date()
+            os_and_print('plotband.x '+os_io('pband','plotband'))
+    date()
 
 if __name__=="__main__":
     main(prefix)
