@@ -2,17 +2,20 @@
 # -*- coding:utf-8
 #BSUB -q "lantana.q"
 ##BSUB -q "bitra.q"
-#BSUB -n 32
+#BSUB -n 16
 #BSUB -J "pw214"
 #BSUB -o out.o
 #BSUB -m "lantana1"
 ##BSUB -m "bitra3"
 (T,F)=(True,False)
 
+#Crystal Data form J. solid state chem. 4 425 (1972) at room temperature(2H- 298K)
 prefix='Sr2RuO4'
 
 space=139
-aa=3.8603; ab=aa; ac=12.729
+aa=3.8603
+ab=aa
+ac=12.729
 za,zp=(0.35316,0.1619)
 
 axis=[aa,ab,ac]
@@ -28,27 +31,26 @@ pseude_dir='/home/Apps/upf_files/'
 outdir='./'
 
 sw_scf = T
-sw_bands = T
-sw_ph = F
-sw_wan = T
-sw_wan_init_nscf = T
-sw_wan_init = T
-sw_restart = T
+sw_bands = F
+sw_ph = T
+sw_wan = F
+sw_wan_init = F
+sw_wan_init_nscf = F
+sw_restart = F
 
 sw_run = F
 sw_mpi = T
-(mpi_num,kthreads_num) = (32,4)
+(mpi_num,kthreads_num) = (16,4)
 
 #=====================pw_parameters================================
 k_mesh_scf=12
 k_mesh_bands=20
 k_mesh_wannier=8
-ecut=80.0
-ec_rho=800
+(ecut,ec_rho)=(60.0,600)
 (e_conv,f_conv)=(1.0e-5,1.0e-4)
 (scf_conv,nscf_conv)=(1.0e-12,1.0e-10)
-nband=50
-nstep=400
+nband=100
+nstep=500
 deg=0.025
 eband_win=[-3,3]
 #======================ph_parameters===============================
@@ -58,14 +60,14 @@ q_mesh_dos=8
 ph_conv=1.0e-14
 pband_win=[0,900]
 #===================Wannier_parameters=============================
-nwann=10                     #number of wannier
-dis_win=[-3.00,4.00]         #max(min)_window
-frz_win=[-0.0,0.0]           #froz_window
-projection=[('Fe','d')]      #projections list[(tuple)]
-sw_fs_plot= F                #plot Fermi surface
-#fermi_mesh = 100
-unk=F                        #Bloch(Wannier)_func
-uwrite=F
+nwann=4                               #number of wannier
+dis_win=[-2.80,1.40]                  #max(min)_window
+frz_win=[-0.60,1.00]                  #froz_window
+projection=[('Ru','dxz,dyz,dxy')]     #projections
+sw_fs_plot= F                         #plot Fermi surface
+fermi_mesh = 100
+unk=F                                 #Bloch(Wannier)_func
+uwrite=T
 #======================modules=====================================
 import numpy as np
 import os,datetime
@@ -75,9 +77,9 @@ w_conv=lambda a:'1.0E%d'%int(np.log10(a))
 #======================pw_&_ph_common_parameter====================
 #k_list=[['G',[0.,0.,0.]],['K',[2./3,0.,0.]],['M',[0.5,-0.5/np.tan(2.*np.pi/3.),0.]],
 #        ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
-k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],['P',[0.25,0.75,-0.25]],
-        ['N',[0.,0.5,0.]],['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]] #Itetra
-#k_list=[['G',[0.,0.,0.]],['M',[0.5,0.,0.]],['K',[1./3,1./3,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
+#k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],['P',[0.25,0.75,-0.25]],
+#        ['N',[0.,0.5,0.]],['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]] #Itetra
+k_list=[['G',[0.,0.,0.]],['M',[0.5,0.,0.]],['K',[1./3,1./3,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
 #================physical parameter================================
 bohr=round(0.52917721092,6)
 ibohr=1.0/bohr
@@ -98,6 +100,7 @@ mass={'H':1.00794,                                                              
       'Th':232.0381,'Pa':231.03588,'U':238.02891}
 #==========================global_variables========================
 UPF=[pp%(at,type_xc)+'.UPF' for pp,at in zip(pot_type,atom)]
+axis=np.array(axis)
 fildvscf="'dvscf'"
 fildyn="'%s.dyn'"%prefix
 flfrc="'%s.fc'"%prefix
@@ -136,12 +139,12 @@ except NameError:
             brav='I'
         elif 'F' in space:
             brav='F'
-        elif 'R' in space:
+        elif ('R' in space):
             brav='R'
-        elif 'A' in space:
-            brav='R'
-        elif 'C' in space:
-            brav='R'
+        elif ('A' in space):
+            brav='A'
+        elif ('C' in space):
+            brav='C'
         else:
             brav='P'
             if '6' in space:
@@ -224,9 +227,7 @@ def get_cr_mat(brav,hexa):
                           [-0.5,np.sqrt(3.)*0.5,0.],
                           [ 0. ,0.             ,1.]])
         else:
-            mat=np.array([[1.,0.,0.],
-                          [0.,1.,0.],
-                          [0.,0.,1.]])
+            mat=np.identity(3)
     elif brav=='I':
         mat=np.array([[ 0.5,-0.5,0.5],
                       [ 0.5, 0.5,0.5],
@@ -239,18 +240,12 @@ def get_cr_mat(brav,hexa):
         mat=np.array([[ 0.5,0.5,0.],
                       [-0.5,0.5,0.],
                       [ 0. ,0. ,1.]])
-    elif brav=='A':
-        mat=np.array([[1.,0.,0.],
-                      [0.,1.,0.],
-                      [0.,0.,1.]])
-    elif brav=='R':
-        mat=np.array([[1.,0.,0.],
-                      [0.,1.,0.],
-                      [0.,0.,1.]])
+    elif brav=='A' or brav=='R':
+        mat=np.identity(3)
     return mat
 
 def cell_parameter_stream(axis,deg):
-    mat_ax=np.array([[axis[0]*ibohr,0,0],[0,axis[1]*ibohr,0],[0,0,axis[2]*ibohr]])
+    mat_ax=np.identity(3)*axis*ibohr
     mat=get_cr_mat(brav,hexa)
     a_vec=list(mat.dot(mat_ax))
     cell_string=''
@@ -438,7 +433,7 @@ def make_win():
         return strings
     ef=get_ef(prefix,'nscf')
 
-    num_val=[['num_bands',nband],['num_wann',nwann]]
+    num_val=[['num_bands',nband],['num_wann',nwann],['num_iter',300]]
     num_strings=win_strings(num_val,'num')
 
     dis_val=[['dis_win_max',dis_win[1]+ef],['dis_win_min',dis_win[0]+ef],
@@ -540,10 +535,12 @@ def main(prefix):
         make_pw_in('scf')
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
+            date()
     if sw_bands:
         make_pw_in('bands')
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'bands'))
+            date()
         make_bands_in()
         if sw_run:
             os_and_print('bands.x '+os_io(prefix,'bands_in'))
@@ -555,6 +552,7 @@ def main(prefix):
             make_pw_in('nscf')
             if sw_run:
                 os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
+                date()
         if sw_wan_init:
             make_win()
             if sw_run:
@@ -563,6 +561,7 @@ def main(prefix):
             if sw_run:
                 os_and_print(mpiexe+'pw2wannier90.x '+os_io(prefix,'pw2wan'))
                 os_and_print('%s %s'%(wan_exe,prefix))
+                date()
         else:
             make_win()
             os_and_print('%s %s'%(wan_exe,prefix))
@@ -570,12 +569,14 @@ def main(prefix):
         make_ph_in()
         if sw_run:
             os_and_print(mpiexe+'ph.x '+npool+os_io(prefix,'ph'))
+            date()
         make_q2r()
         if sw_run:
             os_and_print(mpiexe+'q2r.x '+npool+os_io(prefix,'q2r'))
         make_matdyn(False)
         if sw_run:
             os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'matdyn'))
+            date()
         make_matdyn(True)
         if sw_run:
             os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'freq'))
