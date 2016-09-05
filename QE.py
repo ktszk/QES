@@ -9,64 +9,65 @@
 ##BSUB -m "bitra3"
 (T,F)=(True,False)
 
-#Crystal Data form J. solid state chem. 4 425 (1972) at room temperature(2H- 298K)
-prefix='Sr2RuO4'
+prefix='Sr2RuO4'                       #material'ss (job's) name
 
-space=139
+space=139                              #space group of material
 aa=3.8603
 ab=aa
 ac=12.729
 za,zp=(0.35316,0.1619)
 
-axis=[aa,ab,ac]
-deg=[90,90,90]
-atom=['Sr','Ru','O']
+axis=[aa,ab,ac]                        #lattice parameters [a,b,c]
+deg=[90,90,90]                         #lattice parameters [alpha,beta,gamma]
+atom=['Sr','Ru','O']                   #atom list
+#----------------atoms positions-------------------------------------
 atomic_position=[[[0.,0.,za],[0.,0.,1-za]],
                  [[0.,0.,0.]],
                  [[0.,0.5,0.],[0.5,0.,0.],[0.,0.,zp],[0.,0.,1-zp]]]
+#--------------------------------------------------------------------
 ibrav=0
-type_xc='pbe'
+type_xc='pbe'                          #type of exchange correlation functional
 pot_type=['%s.%s-nsp-van','%s.%s-n-van','%s.%s-n-kjpaw_psl.0.1']
-pseude_dir='/home/Apps/upf_files/'
-outdir='./'
+pseude_dir='/home/Apps/upf_files/'     #path of psede potential directory
+outdir='./'                            #path of output directory
 
-sw_scf = T
-sw_bands = F
-sw_ph = T
-sw_wan = F
-sw_wan_init = F
-sw_wan_init_nscf = F
-sw_restart = F
+#===============switch & number of parallel threads================
+sw_scf = T                             #generate input file for scf calculation
+sw_bands = F                           #generate input file for band calculation
+sw_ph = T                              #generate input file for phonon calculation
+sw_wan = F                             #switch wannierization
+sw_wan_init = F                        #generate input file for wannier90
+sw_wan_init_nscf = F                   #calc nscf cycle for wannier90
+sw_restart = F                         #switch restart tag or not
 
-sw_run = F
-sw_mpi = T
-(mpi_num,kthreads_num) = (16,4)
-
+sw_run = F                             #switch of execute DFT calculation or not
+sw_mpi = T                             #switch of MPI calculation
+(mpi_num,kthreads_num) = (16,4)        #number of threads for MPI/openMP
 #=====================pw_parameters================================
-k_mesh_scf=12
-k_mesh_bands=20
-k_mesh_wannier=8
-(ecut,ec_rho)=(60.0,600)
-(e_conv,f_conv)=(1.0e-5,1.0e-4)
-(scf_conv,nscf_conv)=(1.0e-12,1.0e-10)
-nband=100
-nstep=500
-deg=0.025
-eband_win=[-3,3]
+k_mesh_scf=12                          #k mesh for DFT calc
+k_mesh_bands=20                        #k mesh for bands calc
+k_mesh_wannier=8                       #k mesh for wannierize
+(ecut,ec_rho)=(60.0,600)               #cut off energy of pw and density
+(e_conv,f_conv)=(1.0e-5,1.0e-4)        #threshold of total energy's convergence and force's one 
+(scf_conv,nscf_conv)=(1.0e-12,1.0e-10) #threshold of convergence on scf,nscf cycles
+nband=100                              #number of bands
+nstep=500                              #max number of scf cycle's step
+deg=0.025                              #dispersion of k-mesh
+eband_win=[-3,3]                       #energy range of .ps file
 #======================ph_parameters===============================
-q_mesh_dyn=[4,4,4]
-q_mesh_bands=20
-q_mesh_dos=8
-ph_conv=1.0e-14
-pband_win=[0,900]
+q_mesh_dyn=[4,4,4]                     #q mesh for phonon DFPT calc
+q_mesh_bands=20                        #q mesh for phonon band calc
+q_mesh_dos=8                           #q mesh for phonon dos calc
+ph_conv=1.0e-14                        #threshold of energy's convergence for phonon
+pband_win=[0,900]                      #energy range of .ps file
 #===================Wannier_parameters=============================
-nwann=4                               #number of wannier
-dis_win=[-2.80,1.40]                  #max(min)_window
-frz_win=[-0.60,1.00]                  #froz_window
-projection=[('Ru','dxz,dyz,dxy')]     #projections
-sw_fs_plot= F                         #plot Fermi surface
-fermi_mesh = 100
-unk=F                                 #Bloch(Wannier)_func
+nwann=4                                #number of wannier basis
+dis_win=[-2.80,1.40]                   #max(min)_window, range of sub space energy
+frz_win=[-0.60,1.00]                   #froz_window
+projection=[('Ru','dxz,dyz,dxy')]      #projections, initial funcution of wannier
+sw_fs_plot= F                          #plot Fermi surface
+fermi_mesh = 100                       #mesh of k-points in bxsf file
+unk=F                                  #Bloch(Wannier)_func
 uwrite=T
 #======================modules=====================================
 import numpy as np
@@ -74,12 +75,9 @@ import os,datetime
 #=====================global_lambda_expression=====================
 TorF=lambda x:'.True.' if x else '.False.'
 w_conv=lambda a:'1.0E%d'%int(np.log10(a))
-#======================pw_&_ph_common_parameter====================
-#k_list=[['G',[0.,0.,0.]],['K',[2./3,0.,0.]],['M',[0.5,-0.5/np.tan(2.*np.pi/3.),0.]],
+#==================list of k-point for band calculation============
+#k_list=[['G',[0.,0.,0.]],['M',[0.5,0.,0.]],['K',[1./3,1./3,0.]],
 #        ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
-#k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],['P',[0.25,0.75,-0.25]],
-#        ['N',[0.,0.5,0.]],['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]] #Itetra
-k_list=[['G',[0.,0.,0.]],['M',[0.5,0.,0.]],['K',[1./3,1./3,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
 #================physical parameter================================
 bohr=round(0.52917721067,6)
 ibohr=1.0/bohr
@@ -106,6 +104,11 @@ fildyn="'%s.dyn'"%prefix
 flfrc="'%s.fc'"%prefix
 recover=TorF(sw_restart)
 restart="'from_scratch'"
+#==============serch several variables and initialize if can't find
+try:
+    type_xc
+except NameError:
+    type_xc='pbe'
 
 try:
     brav
@@ -113,13 +116,14 @@ try:
         hexa
     except NameError:
         if isinstance(space, int):
-            hexa=T if space in [191] else F
+            hexa=T if space in range(168,195) else F
         elif isinstance(space, str):
             hexa=T if '6' in space else F
 except NameError:
     hexa=F
     if isinstance(space,int):
-        if space in [23,24,44,45,46,71,72,73,74,79,80,82,87,88,97,98,107,108,109,110,119,120,121,122,139,
+        if space in [23,24,44,45,46,71,72,73,74,79,80,82,87,88,
+                     97,98,107,108,109,110,119,120,121,122,139,
                      140,141,142,197,199,204,206,211,214,217,220,229,230]:
             brav='I'
         elif space in [22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228]:
@@ -149,6 +153,41 @@ except NameError:
             brav='P'
             if '6' in space:
                 hexa=T
+try:
+    k_list
+except NameError:
+    if brav=='I':
+        if axis[0]==axis[1]:
+            if axis[0]==axis[2]: #cube
+                k_list=[['G',[0.,0.,0.]],['H',[0.5,0.5,0.5]],
+                        ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
+                        ['G',[0.,0.,0.]]]
+            else: #tetra
+                k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],
+                        ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
+                        ['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]]
+    elif brav=='F':
+        if axis[0]==axis[2]: #cube
+            k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],['G',[1.0,0.,0.]]
+                    ['L',[0.5,0.5,0.5]],['W',[0.5,0.25,0.75]],
+                    ['G',[0.,0.,0.]]]
+        else: #ortho
+            pass
+    else:
+        if hexa: #Phexa
+            k_list=[['G',[0.,0.,0.]],['K',[2./3,0.,0.]],
+                    ['M',[0.5,-0.5/np.tan(2.*np.pi/3.),0.]],
+                    ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]]
+        else:
+            if axis[0]==axis[1]:
+                if axis[0]==axis[2]: #cube
+                    k_list=[['R',[0.5,0.5,0.]],['G',[0.,0.,0.]]
+                            ,['X',[0.5,0.0,0.]],['M',[0.5,0.5,0.]],
+                            ['G',[0.,0.,0.]]]
+                else: #tetra
+                    k_list=[['G',[0.,0.,0.]],['X',[0.5,0.0,0.]],
+                            ['M',[0.5,0.5,0.]],['G',[0.,0.,0.]],
+                            ['Z',[0.,0.,0.5]]]
 if sw_fs_plot:
     try:
         fermi_mesh
@@ -305,7 +344,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
         exit()
 
     return k_string
-
+#---------------------input file generators-------------------------------
 def make_pw_in(calc):
     def atomic_parameters_stream(atom,atomic_position,UPF):
         atom_string='\nATOMIC_SPECIES\n'
@@ -522,7 +561,7 @@ def make_plotband_in(mode,win):
     format=(name,fext,win_min,win_max,name_out,name_out,ef,nband,ef)
     fstream='%s.%s\n%d %d\n%s.xmgr\n%s.ps\n%9.5f\n%6.2f %6.2f\n'%format
     write_file(fname,fstream)
-
+#-------------------------------------------------------------------------------
 def main(prefix):
     date()
     mpiexe='$LSF_BINDIR/openmpi-mpirun -np %d '%mpi_num if sw_mpi else ''
@@ -531,30 +570,30 @@ def main(prefix):
     def os_io(prefix,exe):
         name='%s.%s'%(prefix,exe)
         return '<%s>%s.out'%tuple([name]*2)
-    if sw_scf:
-        make_pw_in('scf')
+    if sw_scf: #calculate scf cycle
+        make_pw_in('scf') #make pw.x's input file for scf
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
             date()
-    if sw_bands:
-        make_pw_in('bands')
+    if sw_bands: #calculate band structure
+        make_pw_in('bands') #make pw.x's input file for bands
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'bands'))
             date()
-        make_bands_in()
+        make_bands_in() #make input file for bands.x
         if sw_run:
             os_and_print('bands.x '+os_io(prefix,'bands_in'))
-        make_plotband_in(True,eband_win)
+        make_plotband_in(True,eband_win) #make input file for plotband.x
         if sw_run:
             os_and_print('plotband.x '+os_io('eband','plotband'))
-    if sw_wan:
-        if sw_wan_init_nscf:
-            make_pw_in('nscf')
+    if sw_wan: #wannierize
+        if sw_wan_init_nscf: #calculate energy of all k-points for wannier90
+            make_pw_in('nscf') #make pw.x's input file for nscf
             if sw_run:
                 os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
                 date()
-        if sw_wan_init:
-            make_win()
+        if sw_wan_init: #execute wannier90.x with initial settings
+            make_win() #make input file for wannier90 (and pw2wan)
             if sw_run:
                 os_and_print('%s -pp %s'%(wan_exe,prefix))
             make_pw2wan_in()
@@ -562,25 +601,25 @@ def main(prefix):
                 os_and_print(mpiexe+'pw2wannier90.x '+os_io(prefix,'pw2wan'))
                 os_and_print('%s %s'%(wan_exe,prefix))
                 date()
-        else:
+        else: #execute only wannier90
             make_win()
             os_and_print('%s %s'%(wan_exe,prefix))
-    if sw_ph:
-        make_ph_in()
+    if sw_ph: #calculate phonon
+        make_ph_in() #make input file for ph.x
         if sw_run:
             os_and_print(mpiexe+'ph.x '+npool+os_io(prefix,'ph'))
             date()
-        make_q2r()
+        make_q2r() #make input file for q2r.x
         if sw_run:
             os_and_print(mpiexe+'q2r.x '+npool+os_io(prefix,'q2r'))
-        make_matdyn(False)
+        make_matdyn(False) #make input file for matdyn.x (for dos and alpha^2F calculation)
         if sw_run:
             os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'matdyn'))
             date()
-        make_matdyn(True)
+        make_matdyn(True) #make input file for matdyn.x (for phonon dispersion calculation)
         if sw_run:
             os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'freq'))
-        make_plotband_in(False,pband_win)
+        make_plotband_in(False,pband_win) #make input file for plotband.x
         if sw_run:
             os_and_print('plotband.x '+os_io('pband','plotband'))
     date()
