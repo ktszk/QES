@@ -1,45 +1,39 @@
 #!/usr/bin/env python
 # -*- coding:utf-8
-"""
-QE.py Quantum Espresso input files generator
-"""
 #$ -cwd
 #$ -V -S /usr/local/Python-2.7.12/bin/python
-#$ -N KFe2As2
+#$ -N NbSe2
 #$ -e out.e
 #$ -o out.o
-##$ -pe fillup 64
-#$ -pe smp 16
+#$ -pe fillup 64
 #$ -q lantana.q
-##$ -q salvia.q
 #BSUB -q "queue_name"
 #BSUB -n 16
 #BSUB -J "Job name"
 #BSUB -o std_output_file
 #BSUB -m "node_name"
 (T,F)=(True,False)                #alias for bool numbers 
-(mpi_num, kthreads_num) = (16, 4) #number of threads for MPI/openMP
+(mpi_num, kthreads_num) = (64, 8) #number of threads for MPI/openMP
 
 #optional parameters
-aa=3.8251   #lattice parameter a
+aa=3.4446   #lattice parameter a
 ab=aa       #lattice parameter b
-ac=13.7846  #lattice parameter c
-za=0.35314  #non-toribial atomic position
+ac=12.5444  #lattice parameter c
+za=0.1172   #non-toribial atomic position
 
 #======================Crystal structure===========================
-prefix='KFe2As2'                          #material name (or job name)
-space=139                               #space group
+prefix='NbSe2'                          #material name (or job name)
+space=194                               #space group
 axis=[aa,ab,ac]                         #lattice parameters a,b,c
-deg=[90,90,90]                         #lattice parameters alpha,beta,gamma
-atom=['K','Fe','As']                    #elements name
-atomic_position=[[[0. ,0. ,0]],
-                 [[0. ,0.5 ,0.25], [0. ,0.5 ,0.75]], 
-                 [[0. ,0. ,za], [0. ,0. ,1-za]]]
+deg=[90,90,120]                         #lattice parameters alpha,beta,gamma
+atom=['Nb','Se']                        #elements name
+atomic_position=[[[0. ,0. ,0.25], [0. ,0. ,0.75]],
+                 [[1./3 ,2./3 ,za], [2./3 ,1./3 ,1-za], 
+                  [1./3 ,2./3 ,0.5-za], [2./3 ,1./3 ,0.5+za]]]
 #------------------------------------------------------------------
 ibrav=0                                 #brave lattice type
 type_xc='pbe'                           #type of exchange correlation functional
-pot_type=['%s.%s-n-mt',
-          '%s.%s-spn-kjpaw_psl.0.2.1',
+pot_type=['%s.%s-nsp-van',
           '%s.%s-n-kjpaw_psl.0.2']      #psede potential name
 #====================directorys settings===========================
 pseude_dir='/home/Apps/upf_files/'      #path of psede potential directory
@@ -48,25 +42,25 @@ outdir='./'                             #path of output directory
 sw_scf = T                              #generate input file for scf calculation
 sw_bands = F                            #generate input file for band calculation
 sw_ph = F                               #generate input file for phonon calculation
-sw_wan = T                              #switch wannierization
-sw_wan_init = T                         #generate input file for wannier90
-sw_wan_init_nscf = T                    #calc nscf cycle for wannier90
+sw_wan = F                              #switch wannierization
+sw_wan_init = F                         #generate input file for wannier90
+sw_wan_init_nscf = F                    #calc nscf cycle for wannier90
 sw_restart = F                          #switch restart tag or not
 
-sw_run = T                              #switch of execute DFT calculation or not
+sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
-k_mesh_scf=8                           #k mesh for DFT calc
-k_mesh_bands=20                         #k mesh for bands calc
+k_mesh_scf=[16, 16, 8]                  #k mesh for DFT calc
+k_mesh_bands=10                         #k mesh for bands calc
 k_mesh_wannier=8                        #k mesh for wannierize
-(ecut, ec_rho)=(40.0, 600)              #cut off energy of pw and density
+(ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
 (e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
 nband=50                                #number of bands
 nstep=500                               #max number of scf cycle's step
 deg=0.025                               #dispersion of k-mesh
-eband_win=[-3, 4]                       #energy range of .ps file
+eband_win=[-3, 3]                       #energy range of .ps file
 #======================ph_parameters===============================
 q_mesh_dyn=[8, 8, 2]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
@@ -74,24 +68,21 @@ q_mesh_dos=8                            #q mesh for phonon dos calc
 ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
 pband_win=[0, 350]                      #energy range of .ps file
 #===================Wannier_parameters=============================
-nwann=10                                #number of wannier basis
-dis_win=[-2.20, 3.10]                   #max(min)_window, range of sub space energy
-frz_win=[-0.50, 0.50]                   #froz_window
-projection=[('Fe', 'd')]                #projections, initial funcution of wannier
+nwann=4                                 #number of wannier basis
+dis_win=[-2.80, 1.40]                   #max(min)_window, range of sub space energy
+frz_win=[-0.60, 1.00]                   #froz_window
+projection=[('Ru', 'dxz,dyz,dxy')]      #projections, initial funcution of wannier
 sw_fs_plot= F                           #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk=F                                   #Bloch(Wannier)_func
-uwrite=F                                #output unitary matrix for bloch to wannier
+uwrite=T                                #output unitary matrix for bloch to wannier
 #=============================modules==============================
 import numpy as np
 import os, datetime
 #=====================global_lambda_expression=====================
-
 TorF=lambda x:'.True.' if x else '.False.'
 w_conv=lambda a:'1.0E%d'%int(np.log10(a))
 #========== list of k-point for band calculation (manual) =========
-k_list=[['G',[0.,0.,0.]],['X',[0.5,0.5,-0.5]],['M',[0.,1.,-0.5]],
-        ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
 #k_list=[['G',[0.,0.,0.]],['M',[0.5,0.,0.]],['K',[1./3,1./3,0.]],
 #        ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
 #====================== physical parameters =======================
@@ -139,17 +130,17 @@ try: #detect brav
 except NameError:
     hexa=F
     if isinstance(space,int):
-        if space in [23,24,44,45,46,71,72,73,74,79,80,82,87,88,
+        if space in {23,24,44,45,46,71,72,73,74,79,80,82,87,88,
                      97,98,107,108,109,110,119,120,121,122,139,
-                     140,141,142,197,199,204,206,211,214,217,220,229,230]:
+                     140,141,142,197,199,204,206,211,214,217,220,229,230}:
             brav='I'
-        elif space in [22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228]:
+        elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}:
             brav='F'
-        elif space in [146,148,155,160,161,166,167]:
+        elif space in {146,148,155,160,161,166,167}:
             brav='R'
-        elif space in range(38,42): #38>41 is A
+        elif space in {38,39,40,41}:
             brav='A'
-        elif space in [5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68]:
+        elif space in {5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}:
             brav='C'
         else:
             brav='P'
@@ -213,17 +204,11 @@ if sw_fs_plot:
         fermi_mesh=100
 #==========================functions===============================
 def write_file(name,stream):
-    """
-    output strings
-    """
     f=open(name,'w')
     f.write(stream)
     f.close()
 
 def check_type(obj,typ):
-    """
-    check object type
-    """
     if not isinstance(obj,typ):
         print('type err')
         exit()
@@ -231,9 +216,6 @@ def check_type(obj,typ):
         pass
 
 def date():
-    """
-    write date and times
-    """
     from locale import setlocale, LC_ALL
     d=datetime.datetime.today()
     setlocale(LC_ALL,'')
@@ -241,16 +223,10 @@ def date():
                      else '%a %b %d %X JST %Y'))
 
 def os_and_print(command):
-    """
-    print and execute command
-    """
     print(command)
     os.system(command)
 
 def get_ef(name,ext):
-    """
-    get fermi energy from pw.x output file
-    """
     fname='%s.%s.out'%(name,ext)
     if os.path.exists(fname):
         for f in open(fname,'r'):
@@ -267,9 +243,6 @@ def get_ef(name,ext):
         return 0.
 
 def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
-    """
-    generate parameter part strings
-    """
     if sw_form=='pw':
         form='%28s = '
     elif sw_form=='ph':
@@ -285,9 +258,6 @@ def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
     return fstring
 
 def atom_position(atom,atomic_position):
-    """
-    transpose atom position axes
-    """
     mat=get_cr_mat(brav,False)
     mat=np.linalg.inv(mat).T
     aposition=[[list(mat.dot(np.array(ap))) for ap in app] for app in atomic_position]
@@ -299,9 +269,6 @@ def atom_position(atom,atomic_position):
     return atom_string
 
 def get_cr_mat(brav,hexa):
-    """
-    get lattice vector matrix
-    """
     if brav=='P':
         if hexa:
             mat=np.array([[ 1. ,0.             ,0.],
@@ -310,12 +277,9 @@ def get_cr_mat(brav,hexa):
         else:
             mat=np.identity(3)
     elif brav=='I':
-        mat=np.array([[ 1. , 0. ,0. ],
-                      [ 0. , 1. ,0. ],
+        mat=np.array([[ 0.5,-0.5,0.5],
+                      [ 0.5, 0.5,0.5],
                       [-0.5,-0.5,0.5]])
-        #mat=np.array([[ 0.5,-0.5,0.5],
-        #              [ 0.5, 0.5,0.5],
-        #              [-0.5,-0.5,0.5]])
     elif brav=='F':
         mat=np.array([[-0.5,0. ,0.5],
                       [ 0. ,0.5,0.5],
@@ -329,9 +293,6 @@ def get_cr_mat(brav,hexa):
     return mat
 
 def cell_parameter_stream(axis,deg):
-    """
-    generate cell parameter part of strings
-    """
     mat_ax=np.identity(3)*axis*ibohr
     mat=get_cr_mat(brav,hexa)
     a_vec=list(mat.dot(mat_ax))
@@ -342,9 +303,6 @@ def cell_parameter_stream(axis,deg):
     return cell_string
 
 def k_line_stream(k_num,k_list):
-    """
-    generate k-points list for spaghetti
-    """
     k_string='%d\n'%(k_num*(len(k_list)-1)+1)
     dk=1./k_num
     w=1.
@@ -358,9 +316,6 @@ def k_line_stream(k_num,k_list):
     return k_string
 
 def k_cube_stream(k_num,w_sw,sw_wan):
-    """
-    generate k points cubic mesh 
-    """
     wfunc=lambda x,y,z:'\n' if x else ' %f\n'%(1./z if y else 1.)
     if not isinstance(w_sw,bool):
         w_sw=False
@@ -400,13 +355,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
     return k_string
 #---------------------input file generators-------------------------------
 def make_pw_in(calc):
-    """
-    generate pw.x inputfile
-    """
     def atomic_parameters_stream(atom,atomic_position,UPF):
-        """
-        generate atom position part strings
-        """
         atom_string='\nATOMIC_SPECIES\n'
         for at,up in zip(atom,UPF):
             atom_string=atom_string+' %-2s %11.7f  %s\n'%(at,mass[at],up)
@@ -441,13 +390,13 @@ def make_pw_in(calc):
     fs_electrons=make_fstring_obj('electrons',var_electrons,val_electrons,'pw')
     fstream=fstream+fs_electrons
 
-    if calc in ['relax','md','vc-relax','vc-md']:
+    if calc in {'relax','md','vc-relax','vc-md'}:
         var_ions=[]
         val_ions={}
         fs_ions=make_fstring_obj('ions',var_ions,val_ions,'pw')
         fstream=fstream+fs_ions
 
-    if calc in ['vc-relax','vc-md']:
+    if calc in {'vc-relax','vc-md'}:
         var_cell=[]
         val_cell={}
         fs_cell=make_fstring_obj('cell',var_cell,val_cell,'pw')
@@ -459,34 +408,24 @@ def make_pw_in(calc):
         fs_cellparam='CELL_PARAMETERS\n'+cell_parameter_stream(axis,deg)+'\n'
         fstream=fstream+fs_cellparam
 
-    fstream=fstream+'K_POINTS (%s)\n'%('crystal' if calc in ['nscf', 'bands'] else 'automatic')
-    if calc in ['nscf', 'bands']:
+    fstream=fstream+'K_POINTS (%s)\n'%('crystal' if calc in {'nscf', 'bands'} else 'automatic')
+    if calc in {'nscf', 'bands'}:
         if calc=='nscf':
             fs_kl_param=k_cube_stream(k_mesh_wannier,T,F)
         else:
             fs_kl_param=k_line_stream(k_mesh_bands,k_list)
         fstream=fstream+fs_kl_param
     else:
-        if isinstance(k_mesh_scf,int):
-            k_mesh=[k_mesh_scf]*3
-        elif isinstance(k_mesh_scf,list):
-            if len(k_mesh_scf)==3:
-                k_mesh=k_mesh_scf
-            elif len(k_mesh_scf)==2:
-                k_mesh=[k_mesh_scf[0]]*2+[k_mesh_scf[1]]
-            elif len(k_mesh_scf)==1:
-                k_mesh=k_mesh_scf*3
-            else:
-                print("length of k_mesh_scf is btween 1 and 3")
+        if len(k_mesh_scf)==3:
+            k_mesh=k_mesh_scf
+        elif len(k_mesh_scf)==2:
+            k_mesh=[k_mesh_scf[0]]*2+[k_mesh_scf[1]]
         else:
-            print("k_mesh_scf is only int or int list")
+            k_mesh=[k_mesh_scf]*3
         fstream=fstream+'%d %d %d %d %d %d\n'%tuple(k_mesh+[0]*3)
     write_file(fname,fstream)
 
 def make_bands_in():
-    """
-    generate bands.x inputfile as prefix.bands_in
-    """
     fname='%s.bands_in'%prefix
     fstream=''
     filband='%s_bands.dat'%prefix
@@ -497,9 +436,6 @@ def make_bands_in():
     write_file(fname,fstream)
 
 def make_pw2wan_in():
-    """
-    generate pw2wan.x inputfile as prefix.pw2wan
-    """
     fname='%s.pw2wan'%prefix
     fstream='\n'
     var_bands=['outdir','prefix','seedname','spin_component','write_unk']
@@ -510,13 +446,7 @@ def make_pw2wan_in():
     write_file(fname,fstream)
 
 def make_win():
-    """
-    generate wannier90.x inputfile prefix.win
-    """
     def win_strings(values,sname):
-        """
-        generate strings data of .win file
-        """
         def format_val(a):
             if isinstance(a,float):
                 return '%7.4f'%a
@@ -532,9 +462,6 @@ def make_win():
         strings=strings+'\n'
         return strings
     def get_k_point_path():
-        """
-        generate spaghetti klist strings
-        """
         p_name=lambda x: 'GAMMA' if x=='G' else x
         strings='begin Kpoint_Path\n'
         for kl1,kl2 in zip(k_list,k_list[1:]):
@@ -543,9 +470,6 @@ def make_win():
         strings=strings+'end Kpoint_Path\n\n'
         return strings
     def get_projection():
-        """
-        generate projection part strings
-        """
         strings='begin projections\n'
         for prj in projection:
             strings=strings+'%s:%s\n'%prj
@@ -587,9 +511,6 @@ def make_win():
     write_file(fname,fstream)
 
 def make_ph_in():
-    """
-    generate ph.x inputfile as prefix.ph
-    """
     fname='%s.ph'%prefix
     fstream='%s\n'%prefix
     var_inputph=['tr2_ph','prefix','fildyn','trans','ldisp','recover',
@@ -603,9 +524,6 @@ def make_ph_in():
     write_file(fname,fstream)
 
 def make_q2r():
-    """
-    generate q2r.x inputfile prefix.q2r
-    """
     fname='%s.q2r'%(prefix)
     fstream=''
     fs_input=make_fstring_obj('input',['fildyn','flfrc','la2F'],
@@ -614,9 +532,6 @@ def make_q2r():
     write_file(fname,fstream)
 
 def make_matdyn(phband):
-    """
-    generate matdyn.x inputfile
-    """
     asr="'crystal'"
     if phband:
         fext='freq'
@@ -642,9 +557,6 @@ def make_matdyn(phband):
     write_file(fname,fstream)
 
 def make_plotband_in(mode,win):
-    """
-    generate plotband.x inputfile
-    """
     check_type(mode,bool)
     if mode:
         fname='eband.plotband'
@@ -667,9 +579,6 @@ def make_plotband_in(mode,win):
     write_file(fname,fstream)
 #---------------------------- main ---------------------------------
 def main(prefix):
-    """
-    main program
-    """
     date()
     mpiopt='$LSF_BINDIR/openmpi-' if sw_bsub else ''
     mpiexe=mpiopt+'mpirun -np %d '%mpi_num if sw_mpi else ''
@@ -734,6 +643,3 @@ def main(prefix):
 
 if __name__=="__main__":
     main(prefix)
-
-__author__='kt_suzuki'
-__version__='1.0'
