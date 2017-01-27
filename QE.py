@@ -40,9 +40,9 @@ pseude_dir='/home/Apps/upf_files/'      #path of psede potential directory
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = T                              #generate input file for scf calculation
-sw_bands = F                            #generate input file for band calculation
-sw_ph = F                               #generate input file for phonon calculation
-sw_wan = F                              #switch wannierization
+sw_bands = T                            #generate input file for band calculation
+sw_ph = T                               #generate input file for phonon calculation
+sw_wan = T                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc nscf cycle for wannier90
 sw_restart = F                          #switch restart tag or not
@@ -184,9 +184,11 @@ except NameError: #common k-points list
             pass
     else:
         if hexa: #Phexa
-            k_list=[['G',[0.,0.,0.]],['K',[2./3,0.,0.]],
-                    ['M',[0.5,-0.5/np.tan(2.*np.pi/3.),0.]],
-                    ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]]
+            k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
+                    ['M',[0.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]]
+            #k_list=[['G',[0.,0.,0.]],['K',[2./3,0.,0.]],
+            #        ['M',[0.5,-0.5/np.tan(2.*np.pi/3.),0.]],
+            #        ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]]
         else:
             if axis[0]==axis[1]:
                 if axis[0]==axis[2]: #cube
@@ -288,7 +290,11 @@ def get_cr_mat(brav,hexa):
         mat=np.array([[ 0.5,0.5,0.],
                       [-0.5,0.5,0.],
                       [ 0. ,0. ,1.]])
-    elif brav=='A' or brav=='R':
+    elif brav=='R':
+        mat=np.array([[ 1.0,0.,0.],
+                      [np.cos(np.pi*deg[0]/180),np.cos(np.pi*deg[0]/180),0.],
+                      [np.cos(np.pi*deg[0]/180),0. ,1.]])
+    elif brav=='A':
         mat=np.identity(3)
     return mat
 
@@ -495,7 +501,7 @@ def make_win():
     dis_strings=win_strings(dis_val,'dis')
 
     plot_val=[['fermi_surface_plot',TorF(sw_fs_plot)],['fermi_energy',ef],
-              ['fermi_surface_num_points',fermi_mesh],['bands_plot','.True.'],['umat_write',TorF(uwrite)]]
+              ['fermi_surface_num_points',fermi_mesh],['bands_plot','.True.'],['write_hr','.True.'],['write_u_matrices',TorF(uwrite)]]
     plot_strings=win_strings(plot_val,'plot')
 
     k_path_strings=get_k_point_path()
@@ -551,7 +557,8 @@ def make_matdyn(phband):
     fs_input=make_fstring_obj('input',input_list,input_val,'matdyn')
     fstream=fstream+fs_input
     if phband:
-        q_list=[[kl[0],list(np.array(kl[1])/(axis/axis[0]))] for kl in k_list]
+        mat=get_cr_mat(brav,hexa)
+        q_list=[[kl[0],list(np.linalg.inv(mat*(axis/axis[0])).dot(kl[1]))] for kl in k_list]
         fs_klist=k_line_stream(q_mesh_bands,q_list)
         fstream=fstream+fs_klist
     write_file(fname,fstream)
