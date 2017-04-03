@@ -2,39 +2,38 @@
 # -*- coding:utf-8
 #$ -cwd
 #$ -V -S /usr/local/Python-2.7.12/bin/python
-#$ -N NbSe2
+#$ -N Pb
 #$ -e out.e
 #$ -o out.o
-#$ -pe fillup 64
-#$ -q lantana.q
+#$ -pe smp 40
+##$ -pe fillup 64
+#$ -q salvia.q
+##$ -q lantana.q
 #BSUB -q "queue_name"
 #BSUB -n 16
 #BSUB -J "Job name"
 #BSUB -o std_output_file
 #BSUB -m "node_name"
 (T,F)=(True,False)                #alias for bool numbers 
-(mpi_num, kthreads_num) = (64, 8) #number of threads for MPI/openMP
+(mpi_num, kthreads_num) = (40, 8) #number of threads for MPI/openMP
 
 #optional parameters
-aa=3.4446   #lattice parameter a
+aa=4.9508   #lattice parameter a
 ab=aa       #lattice parameter b
-ac=12.5444  #lattice parameter c
-za=0.1172   #non-toribial atomic position
+ac=aa       #lattice parameter c
 
 #======================Crystal structure===========================
-prefix='NbSe2'                          #material name (or job name)
-space=194                               #space group
+__ref__="H. P. Klug, J. Am. Chem. Soc., 1946, 68, 1493."
+prefix='Pb'                             #material name (or job name)
+space=225                               #space group
 axis=[aa,ab,ac]                         #lattice parameters a,b,c
-deg=[90,90,120]                         #lattice parameters alpha,beta,gamma
-atom=['Nb','Se']                        #elements name
-atomic_position=[[[0. ,0. ,0.25], [0. ,0. ,0.75]],
-                 [[1./3 ,2./3 ,za], [2./3 ,1./3 ,1-za], 
-                  [1./3 ,2./3 ,0.5-za], [2./3 ,1./3 ,0.5+za]]]
+deg=[90,90,90]                          #lattice parameters alpha,beta,gamma
+atom=['Pb']                             #elements name
+atomic_position=[[[0. ,0. ,0.]]]
 #------------------------------------------------------------------
 ibrav=0                                 #brave lattice type
 type_xc='pbe'                           #type of exchange correlation functional
-pot_type=['%s.%s-nsp-van',
-          '%s.%s-n-kjpaw_psl.0.2']      #psede potential name
+pot_type=['%s.%s-dn-kjpaw_psl.0.2.2']   #psede potential name
 #====================directorys settings===========================
 pseude_dir='/home/Apps/upf_files/'      #path of psede potential directory
 outdir='./'                             #path of output directory
@@ -42,16 +41,16 @@ outdir='./'                             #path of output directory
 sw_scf = T                              #generate input file for scf calculation
 sw_bands = T                            #generate input file for band calculation
 sw_ph = T                               #generate input file for phonon calculation
-sw_wan = T                              #switch wannierization
+sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc nscf cycle for wannier90
 sw_restart = F                          #switch restart tag or not
 
-sw_run = F                              #switch of execute DFT calculation or not
+sw_run = T                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
-sw_bsub = F                             #switch bsub
+sw_bsub = F                             #switch mpirun command for lava or not
 #=====================pw_parameters================================
-k_mesh_scf=[16, 16, 8]                  #k mesh for DFT calc
+k_mesh_scf=[8, 8, 8]                  #k mesh for DFT calc
 k_mesh_bands=10                         #k mesh for bands calc
 k_mesh_wannier=8                        #k mesh for wannierize
 (ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
@@ -62,7 +61,7 @@ nstep=500                               #max number of scf cycle's step
 deg=0.025                               #dispersion of k-mesh
 eband_win=[-3, 3]                       #energy range of .ps file
 #======================ph_parameters===============================
-q_mesh_dyn=[8, 8, 2]                    #q mesh for phonon DFPT calc
+q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
 q_mesh_dos=8                            #q mesh for phonon dos calc
 ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
@@ -177,7 +176,7 @@ except NameError: #common k-points list
                         ['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]]
     elif brav=='F':
         if axis[0]==axis[2]: #cube
-            k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],['G',[1.0,0.,0.]]
+            k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],['G',[1.0,0.,0.]],
                     ['L',[0.5,0.5,0.5]],['W',[0.5,0.25,0.75]],
                     ['G',[0.,0.,0.]]]
         else: #ortho
