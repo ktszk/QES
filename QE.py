@@ -2,7 +2,7 @@
 # -*- coding:utf-8
 #$ -cwd
 #$ -V -S /usr/local/Python-2.7.12/bin/python
-#$ -N Pb
+#$ -N CaFeAsF
 #$ -e out.e
 #$ -o out.o
 #$ -pe smp 40
@@ -18,29 +18,36 @@
 (mpi_num, kthreads_num) = (40, 8) #number of threads for MPI/openMP
 
 #optional parameters
-aa=4.9508   #lattice parameter a
-ab=aa       #lattice parameter b
-ac=aa       #lattice parameter c
+aa=5.514594 #lattice parameter a
+ab=5.476802 #lattice parameter b
+ac=8.576845 #lattice parameter c
+zca=0.15441 #non-toribial atomic position
+zas=0.66329 #non-toribial atomic position
 
 #======================Crystal structure===========================
-__ref__="H. P. Klug, J. Am. Chem. Soc., 1946, 68, 1493."
-prefix='Pb'                             #material name (or job name)
-space=225                               #space group
-axis=[aa,ab,ac]                         #lattice parameters a,b,c
-deg=[90,90,90]                          #lattice parameters alpha,beta,gamma
-atom=['Pb']                             #elements name
-atomic_position=[[[0. ,0. ,0.]]]
+prefix='CaFeAsF'                          #material name (or job name)
+space=67                                  #space group number
+axis=[aa,ab,ac]                           #lattice parameters a,b,c
+deg=[90,90,90]                            #lattice parameters alpha,beta,gamma
+atom=['Ca','Fe','As','F']                 #elements name
+atomic_position=[[[  0., .25, zca], [  0., .75, 1-zca]],
+                 [[ .25,  0.,  .5], [ .75,  0.,    .5]],
+                 [[  0., .25, zas], [  0., .75, 1-zas]],
+                 [[ .25,  0.,  0.], [ .75,  0.,    0.]]]
 #------------------------------------------------------------------
 ibrav=0                                 #brave lattice type
 type_xc='pbe'                           #type of exchange correlation functional
-pot_type=['%s.%s-dn-kjpaw_psl.0.2.2']   #psede potential name
+pot_type=['%s.%s-nsp-van',
+          '%s.%s-spn-kjpaw_psl.0.2.1',
+          '%s.%s-n-kjpaw_psl.0.2',
+          '%s.%s-n-kjpaw_psl.0.1']      #psede potential name
 #====================directorys settings===========================
 pseude_dir='/home/Apps/upf_files/'      #path of psede potential directory
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = T                              #generate input file for scf calculation
 sw_bands = T                            #generate input file for band calculation
-sw_ph = T                               #generate input file for phonon calculation
+sw_ph = F                               #generate input file for phonon calculation
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc nscf cycle for wannier90
@@ -48,29 +55,29 @@ sw_restart = F                          #switch restart tag or not
 
 sw_run = T                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
-sw_bsub = F                             #switch mpirun command for lava or not
+sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
-k_mesh_scf=[8, 8, 8]                  #k mesh for DFT calc
-k_mesh_bands=10                         #k mesh for bands calc
-k_mesh_wannier=8                        #k mesh for wannierize
+k_mesh_scf=[10]                         #k mesh for DFT calc
+k_mesh_bands=20                         #k mesh for bands calc
+k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
 (ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
 (e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
-nband=50                                #number of bands
+nband=150                                #number of bands
 nstep=500                               #max number of scf cycle's step
 deg=0.025                               #dispersion of k-mesh
 eband_win=[-3, 3]                       #energy range of .ps file
 #======================ph_parameters===============================
-q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
+q_mesh_dyn=[6, 6, 2]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
 q_mesh_dos=8                            #q mesh for phonon dos calc
 ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
-pband_win=[0, 350]                      #energy range of .ps file
+pband_win=[0, 900]                      #energy range of .ps file
 #===================Wannier_parameters=============================
-nwann=4                                 #number of wannier basis
-dis_win=[-2.80, 1.40]                   #max(min)_window, range of sub space energy
-frz_win=[-0.60, 1.00]                   #froz_window
-projection=[('Ru', 'dxz,dyz,dxy')]      #projections, initial funcution of wannier
+nwann=22                                #number of wannier basis
+dis_win=[-6.00, 8.00]                   #max(min)_window, range of sub space energy
+frz_win=[-5.0, 1.50]                    #froz_window dp22
+projection=[('Nb','d'),('Se','p')]      #projections, initial funcution of wannier
 sw_fs_plot= F                           #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk=F                                   #Bloch(Wannier)_func
@@ -81,9 +88,6 @@ import os, datetime
 #=====================global_lambda_expression=====================
 TorF=lambda x:'.True.' if x else '.False.'
 w_conv=lambda a:'1.0E%d'%int(np.log10(a))
-#========== list of k-point for band calculation (manual) =========
-#k_list=[['G',[0.,0.,0.]],['M',[0.5,0.,0.]],['K',[1./3,1./3,0.]],
-#        ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]] #Phexa
 #====================== physical parameters =======================
 bohr=round(0.52917721067, 6)           #Bohr Radius
 ibohr=1.0/bohr                         #inverse of Bohr Radius
@@ -176,28 +180,32 @@ except NameError: #common k-points list
                         ['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]]
     elif brav=='F':
         if axis[0]==axis[2]: #cube
-            k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],['G',[1.0,0.,0.]],
+            k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],['G',[1.0,0.,0.]]
                     ['L',[0.5,0.5,0.5]],['W',[0.5,0.25,0.75]],
                     ['G',[0.,0.,0.]]]
         else: #ortho
             pass
+    elif brav=='C': #ortho
+        k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
+                ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
     else:
         if hexa: #Phexa
             k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
-                    ['M',[0.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]]
-            #k_list=[['G',[0.,0.,0.]],['K',[2./3,0.,0.]],
-            #        ['M',[0.5,-0.5/np.tan(2.*np.pi/3.),0.]],
-            #        ['G',[0.,0.,0.]],['Z',[0.,0.,0.5]]]
+                    ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
         else:
             if axis[0]==axis[1]:
                 if axis[0]==axis[2]: #cube
-                    k_list=[['R',[0.5,0.5,0.]],['G',[0.,0.,0.]]
-                            ,['X',[0.5,0.0,0.]],['M',[0.5,0.5,0.]],
+                    k_list=[['R',[.5,.5,0.]],['G',[0.,0.,0.]]
+                            ,['X',[.5,0.,0.]],['M',[.5,.5,0.]],
                             ['G',[0.,0.,0.]]]
                 else: #tetra
-                    k_list=[['G',[0.,0.,0.]],['X',[0.5,0.0,0.]],
-                            ['M',[0.5,0.5,0.]],['G',[0.,0.,0.]],
-                            ['Z',[0.,0.,0.5]]]
+                    k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],
+                            ['M',[.5,.5,0.]],['G',[0.,0.,0.]],
+                            ['Z',[0.,0.,.5]]]
+            else:
+                k_list=[['G',[0.,0.,0.]],['X',[0.5,0.0,0.]],
+                        ['M',[0.5,0.5,0.]],['Y',[0.,0.5,0.]],
+                        ['G',[0.,0.,0.]],['M',[0.5,0.5,0.]]]
 if sw_fs_plot:
     try: #detect fermi_mesh
         fermi_mesh
@@ -272,29 +280,41 @@ def atom_position(atom,atomic_position):
 def get_cr_mat(brav,hexa):
     if brav=='P':
         if hexa:
-            mat=np.array([[ 1. ,0.             ,0.],
-                          [-0.5,np.sqrt(3.)*0.5,0.],
-                          [ 0. ,0.             ,1.]])
+            mat=np.array([[ 1., 0.            , 0.],
+                          [-.5, .5*np.sqrt(3.), 0.],
+                          [ 0., 0.            , 1.]])
         else:
             mat=np.identity(3)
     elif brav=='I':
-        mat=np.array([[ 0.5,-0.5,0.5],
-                      [ 0.5, 0.5,0.5],
-                      [-0.5,-0.5,0.5]])
+        mat=np.array([[ .5,-.5,.5],
+                      [ .5, .5,.5],
+                      [-.5,-.5,.5]])
     elif brav=='F':
-        mat=np.array([[-0.5,0. ,0.5],
-                      [ 0. ,0.5,0.5],
-                      [-0.5,0.5,0.]])
+        mat=np.array([[-.5,0.,.5],
+                      [ 0.,.5,.5],
+                      [-.5,.5,0.]])
     elif brav=='C':
-        mat=np.array([[ 0.5,0.5,0.],
-                      [-0.5,0.5,0.],
+        mat=np.array([[ .5,.5,0.],
+                      [-.5,.5,0.],
                       [ 0. ,0. ,1.]])
     elif brav=='R':
-        mat=np.array([[ 1.0,0.,0.],
-                      [np.cos(np.pi*deg[0]/180),np.cos(np.pi*deg[0]/180),0.],
-                      [np.cos(np.pi*deg[0]/180),0. ,1.]])
+        phase=np.pi*deg[0]/180
+        phase2=np.pi*deg[0]/180
+        r1=np.cos(phase)
+        r2=np.sin(phase)
+        r3=r2*np.cos(phase2)
+        r4=r2*np.sin(phase2)
+        mat=np.array([[ 1., 0., 0.],
+                      [ r1, r2, 0.],
+                      [ r1, r3, r4.]])
     elif brav=='A':
-        mat=np.identity(3)
+        mat=np.array([[ 1., 0.,0.],
+                      [ 0., .5,.5],
+                      [ 0.,-.5,.5]])
+    elif brav=='B':
+        mat=np.array([[ .5, 0.,.5],
+                      [ 0., 1.,0.],
+                      [-.5, 0.,.5]])
     return mat
 
 def cell_parameter_stream(axis,deg):
@@ -333,19 +353,22 @@ def k_cube_stream(k_num,w_sw,sw_wan):
                 for k in range(k_num):
                     k_string=k_string+'%f %f %f'%(dk*i,dk*j,dk*k)+wst
     elif isinstance(k_num,list):
-        if  len(k_num==2):
+        if len(k_num)==1:
+            dk=[1./knum[0]]*3
+            kn=k_num*3
+        if len(k_num)==2:
             dk=[1./kp for kp in k_num]
             dk=[dk[0]]+dk
             kn=[k_num[0]]+k_num
-        elif len(k_num==3):
+        elif len(k_num)==3:
             dk=[1./kp for kp in k_num]
             kn=k_num
         else:
-            print('k dimension < 3')
+            print('k dimension <= 3')
             exit()
+        w0=1.
         if w_sw:
-            w0=1.
-            for wi in range(kn):
+            for wi in kn:
                 w0=w0*wi
         wst=wfunc(sw_wan,w_sw,w0)
         k_string='' if sw_wan else '%d\n'%w0
@@ -421,12 +444,17 @@ def make_pw_in(calc):
             fs_kl_param=k_line_stream(k_mesh_bands,k_list)
         fstream=fstream+fs_kl_param
     else:
-        if len(k_mesh_scf)==3:
-            k_mesh=k_mesh_scf
-        elif len(k_mesh_scf)==2:
-            k_mesh=[k_mesh_scf[0]]*2+[k_mesh_scf[1]]
-        else:
+        if isinstance(k_mesh_scf,list):
+            if len(k_mesh_scf)==3:
+                k_mesh=k_mesh_scf
+            elif len(k_mesh_scf)==2:
+                k_mesh=[k_mesh_scf[0]]*2+[k_mesh_scf[1]]
+            else:
+                k_mesh=[k_mesh_scf[0]]*3
+        elif isinstance(k_mesh_scf,int):
             k_mesh=[k_mesh_scf]*3
+        else:
+            print('k_mesh_scf is list(datatype=int) or int only')
         fstream=fstream+'%d %d %d %d %d %d\n'%tuple(k_mesh+[0]*3)
     write_file(fname,fstream)
 
@@ -483,11 +511,19 @@ def make_win():
     def get_grid(k_num):
         if isinstance(k_num,int):
             klist=tuple([k_num]*3)
-        elif isinstance(k_num,int):
-            if len(k_num)==2:
+        elif isinstance(k_num,list):
+            if len(k_num)==1:
+                klist=tuple(k_num*3)
+            elif len(k_num)==2:
                 klist=(k_num[0],k_num[0],k_num[1])
-            else:
+            elif len(k_num)==3:
                 klist=tuple(k_num)
+            else:
+                print('you should set length of k_num < 4')
+                exit()
+        else:
+            print('k_num type is only int or list')
+            exit()
         strings='mp_grid = %5d %5d %5d\n\n'%klist
         return strings
     ef=get_ef(prefix,'nscf')
