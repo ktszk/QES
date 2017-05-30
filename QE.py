@@ -286,17 +286,17 @@ def get_cr_mat(brav,hexa):
         else:
             mat=np.identity(3)
     elif brav=='I':
-        mat=np.array([[ .5,-.5,.5],
-                      [ .5, .5,.5],
-                      [-.5,-.5,.5]])
+        mat=np.array([[ .5, -.5, .5],
+                      [ .5,  .5, .5],
+                      [-.5, -.5, .5]])
     elif brav=='F':
-        mat=np.array([[-.5,0.,.5],
-                      [ 0.,.5,.5],
-                      [-.5,.5,0.]])
+        mat=np.array([[-.5, 0., .5],
+                      [ 0., .5, .5],
+                      [-.5, .5, 0.]])
     elif brav=='C':
-        mat=np.array([[ .5,.5,0.],
-                      [-.5,.5,0.],
-                      [ 0. ,0. ,1.]])
+        mat=np.array([[ .5, .5, 0.],
+                      [-.5, .5, 0.],
+                      [ 0., 0., 1.]])
     elif brav=='R':
         phase=np.pi*deg[0]/180
         phase2=np.pi*deg[0]/180
@@ -304,17 +304,17 @@ def get_cr_mat(brav,hexa):
         r2=np.sin(phase)
         r3=r2*np.cos(phase2)
         r4=r2*np.sin(phase2)
-        mat=np.array([[ 1., 0., 0.],
-                      [ r1, r2, 0.],
-                      [ r1, r3, r4.]])
+        mat=np.array([[ 1., 0.,  0.],
+                      [ r1, r2,  0.],
+                      [ r1, r3, r4]])
     elif brav=='A':
-        mat=np.array([[ 1., 0.,0.],
-                      [ 0., .5,.5],
-                      [ 0.,-.5,.5]])
+        mat=np.array([[ 1., 0., 0.],
+                      [ 0., .5, .5],
+                      [ 0.,-.5, .5]])
     elif brav=='B':
-        mat=np.array([[ .5, 0.,.5],
-                      [ 0., 1.,0.],
-                      [-.5, 0.,.5]])
+        mat=np.array([[ .5, 0., .5],
+                      [ 0., 1., 0.],
+                      [-.5, 0., .5]])
     return mat
 
 def cell_parameter_stream(axis,deg):
