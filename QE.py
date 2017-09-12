@@ -47,13 +47,13 @@ outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = T                              #generate input file for scf calculation
 sw_bands = T                            #generate input file for band calculation
-sw_ph = F                               #generate input file for phonon calculation
+sw_ph = T                               #generate input file for phonon calculation
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc nscf cycle for wannier90
 sw_restart = F                          #switch restart tag or not
 
-sw_run = T                              #switch of execute DFT calculation or not
+sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
@@ -593,9 +593,11 @@ def make_matdyn(phband):
     fstream=fstream+fs_input
     if phband:
         mat=get_cr_mat(brav,hexa)
-        q_list=[[kl[0],list(np.linalg.inv(mat*(axis/axis[0])).dot(kl[1]))] for kl in k_list]
-        fs_klist=k_line_stream(q_mesh_bands,q_list)
-        fstream=fstream+fs_klist
+        avec=mat*axis
+        alat=np.sqrt(sum(avec[0]**2))
+        q_list=[[kl[0],list(np.linalg.inv(mat*axis/alat).dot(kl[1]))] for kl in k_list]
+        fs_qlist=k_line_stream(q_mesh_bands,q_list)
+        fstream=fstream+fs_qlist
     write_file(fname,fstream)
 
 def make_plotband_in(mode,win):
