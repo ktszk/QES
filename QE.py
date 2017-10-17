@@ -47,12 +47,13 @@ sw_apw=True                             #switch of pp dir for paw( and soc) or n
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = T                              #generate input file for scf calculation
-sw_dos = T                              #generate input file for dos calculation
-sw_bands = F                            #generate input file for band calculation
-sw_ph = F                               #generate input file for phonon calculation
+sw_dos = T                              #generate input file for dos calc.
+sw_prj = F                              #generate input file for proj calc.
+sw_bands = F                            #generate input file for band calc.
+sw_ph = F                               #generate input file for phonon calc.
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
-sw_wan_init_nscf = F                    #calc nscf cycle for wannier90
+sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
 sw_restart = F                          #switch restart tag or not
 
 sw_run = F                              #switch of execute DFT calculation or not
@@ -65,7 +66,7 @@ k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
 (ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
 (e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
-nband=150                                #number of bands
+nband=150                               #number of bands
 nstep=500                               #max number of scf cycle's step
 dgs=0.025                               #dispersion of k-mesh
 de=0.1                                  #delta E for dos
@@ -128,7 +129,8 @@ if sw_so or sw_apw:
     pseude_dir='/home/Apps/UPF/%s/'%txc 
 else:
     pseude_dir='/home/Apps/upf_files/'
-UPF=[pp%(at,type_xc)+'.UPF' for pp, at in zip(pot_type,atom)]
+    txc=type_xc
+UPF=[pp%(at,txc)+'.UPF' for pp, at in zip(pot_type,atom)]
 
 try: #detect brav
     brav
@@ -473,12 +475,24 @@ def make_pw_in(calc):
 def make_dos_in():
     fname='%s.dos_in'%prefix
     fildos='%s.dos'%prefix
-    var_dos=['prefix','outdir','emin','emax','de','ngauss','dgauss','fildos']
-    val_dos={'prefix':prefix,'outdir':"'%s'"%outdir,'fildos':"'%s'"%fildos,
-               'emin':edos_win[0],'emax':edos_win[1],'de':de,'ngauss':1,'dgauss':dgs}
+    var_dos=['prefix','outdir','Emin','Emax','DeltaE','ngauss','degauss','fildos']
+    val_dos={'prefix':"'%s'"%prefix,'outdir':"'%s'"%outdir,'fildos':"'%s'"%fildos,
+               'Emin':edos_win[0],'Emax':edos_win[1],'DeltaE':de,'ngauss':1,'degauss':dgs}
     fstream=''
     fs_dos=make_fstring_obj('dos',var_dos,val_dos,'dos')
     fstream=fstream+fs_dos
+    write_file(fname,fstream)
+
+def make_prjwfc_in():
+    fname='%s.prjwfc'%prefix
+    filpdos='%s.pdos'%prefix
+    var_prj=['prefix','outdir','Emin','Emax','DeltaE','ngauss','degauss','filpdos','pawproj']
+    val_prj={'prefix':prefix,'outdir':"'%s'"%outdir,'filpdos':"'%s'"%filpdos,
+             'Emin':edos_win[0],'Emax':edos_win[1],'DeltaE':de,'ngauss':1,'degauss':dgs,
+             'pawproj':'.Ture.'}
+    fstream=''
+    fs_prj=make_fstring_obj('projwfc',var_prj,val_prj,'prjwfc')
+    fstream=fstream+fs_prj
     write_file(fname,fstream)
 
 def make_bands_in():
@@ -660,9 +674,17 @@ def main(prefix):
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
             date()
     if sw_dos:
-        make_dos_in()
+        make_pw_in('nscf') #make pw.x's input file for nscf
+        if sw_prj:
+            make_prjwfc_in()
+        else:
+            make_dos_in()
         if sw_run:
-            os_and_print(mpiexe+'dos.x '+npool+os_io(prefix,'dos_in'))
+            os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
+            if sw_prj:
+                os_and_print(mpiexe+'projwfc.x '+npool+os_io(prefix,'prjwfc'))
+            else:
+                os_and_print(mpiexe+'dos.x '+npool+os_io(prefix,'dos_in'))
             date()
     if sw_bands: #calculate band structure
         make_pw_in('bands') #make pw.x's input file for bands
