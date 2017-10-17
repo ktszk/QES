@@ -47,6 +47,7 @@ sw_apw=True                             #switch of pp dir for paw( and soc) or n
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = T                              #generate input file for scf calculation
+sw_dos = T                              #generate input file for dos calculation
 sw_bands = F                            #generate input file for band calculation
 sw_ph = F                               #generate input file for phonon calculation
 sw_wan = F                              #switch wannierization
@@ -66,8 +67,10 @@ k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
 (scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
 nband=150                                #number of bands
 nstep=500                               #max number of scf cycle's step
-deg=0.025                               #dispersion of k-mesh
-eband_win=[-3, 3]                       #energy range of .ps file
+dgs=0.025                               #dispersion of k-mesh
+de=0.1                                  #delta E for dos
+eband_win=[-3., 3.]                     #energy range of .ps file
+edos_win=[-3., 3.]                      #energy range of .dos file
 #======================ph_parameters===============================
 q_mesh_dyn=[6, 6, 2]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
@@ -467,6 +470,17 @@ def make_pw_in(calc):
         fstream=fstream+'%d %d %d %d %d %d\n'%tuple(k_mesh+[0]*3)
     write_file(fname,fstream)
 
+def make_dos_in():
+    fname='%s.dos_in'%prefix
+    fildos='%s.dos'%prefix
+    var_dos=['prefix','outdir','emin','emax','de','ngauss','dgauss','fildos']
+    val_dos={'prefix':prefix,'outdir':"'%s'"%outdir,'fildos':"'%s'"%fildos,
+               'emin':edos_win[0],'emax':edos_win[1],'de':de,'ngauss':1,'dgauss':dgs}
+    fstream=''
+    fs_dos=make_fstring_obj('dos',var_dos,val_dos,'dos')
+    fstream=fstream+fs_dos
+    write_file(fname,fstream)
+
 def make_bands_in():
     fname='%s.bands_in'%prefix
     fstream=''
@@ -644,6 +658,11 @@ def main(prefix):
         make_pw_in('scf') #make pw.x's input file for scf
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
+            date()
+    if sw_dos:
+        make_dos_in()
+        if sw_run:
+            os_and_print(mpiexe+'dos.x '+npool+os_io(prefix,'dos_in'))
             date()
     if sw_bands: #calculate band structure
         make_pw_in('bands') #make pw.x's input file for bands
