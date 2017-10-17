@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# -*- coding:utf-8
+# -*- coding:utf-8 -*-
 #$ -cwd
 #$ -V -S /usr/local/Python-2.7.12/bin/python
-#$ -N CaFeAsF
+#$ -N FeSe
 #$ -e out.e
 #$ -o out.o
 #$ -pe smp 40
@@ -41,13 +41,14 @@ pot_type=['%s.%s-nsp-van',
           '%s.%s-spn-kjpaw_psl.0.2.1',
           '%s.%s-n-kjpaw_psl.0.2',
           '%s.%s-n-kjpaw_psl.0.1']      #psede potential name
+sw_so=False                              #activate soc and noncliner calc.
 #====================directorys settings===========================
-pseude_dir='/home/Apps/upf_files/'      #path of psede potential directory
+sw_apw=True                             #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = T                              #generate input file for scf calculation
-sw_bands = T                            #generate input file for band calculation
-sw_ph = T                               #generate input file for phonon calculation
+sw_bands = F                            #generate input file for band calculation
+sw_ph = F                               #generate input file for phonon calculation
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc nscf cycle for wannier90
@@ -74,10 +75,10 @@ q_mesh_dos=8                            #q mesh for phonon dos calc
 ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
 pband_win=[0, 900]                      #energy range of .ps file
 #===================Wannier_parameters=============================
-nwann=22                                #number of wannier basis
-dis_win=[-6.00, 8.00]                   #max(min)_window, range of sub space energy
-frz_win=[-5.0, 1.50]                    #froz_window dp22
-projection=[('Nb','d'),('Se','p')]      #projections, initial funcution of wannier
+nwann=10                                #number of wannier basis
+dis_win=[-3.00, 3.00]                   #max(min)_window, range of sub space energy
+frz_win=[-0.0, 0.0]                     #froz_window dp22
+projection=[('Fe','d')]                 #projections, initial funcution of wannier
 sw_fs_plot= F                           #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk=F                                   #Bloch(Wannier)_func
@@ -108,7 +109,6 @@ mass={'H':1.00794,                                                              
       'Hg':200.59,'Tl':204.3833,'Pb':207.2,'Bi':208.98038,
       'Th':232.0381,'Pa':231.03588,'U':238.02891}
 #==========================global_variables========================
-UPF=[pp%(at,type_xc)+'.UPF' for pp, at in zip(pot_type,atom)]
 axis=np.array(axis)
 fildvscf="'dvscf'"
 fildyn="'%s.dyn'"%prefix
@@ -120,6 +120,12 @@ try: #detect type_xc
     type_xc
 except NameError:
     type_xc='pbe'
+if sw_so or sw_apw:
+    txc='rel-'+type_xc if sw_so else type_xc
+    pseude_dir='/home/Apps/UPF/%s/'%txc 
+else:
+    pseude_dir='/home/Apps/upf_files/'
+UPF=[pp%(at,type_xc)+'.UPF' for pp, at in zip(pot_type,atom)]
 
 try: #detect brav
     brav
@@ -407,9 +413,12 @@ def make_pw_in(calc):
 
     var_system=['ibrav','nat','ntyp','occupations','smearing','degauss',
                 'la2f','nbnd','ecutwfc','ecutrho']
+    if sw_so:
+        var_system=var_system+['noncolin','lspinorb']
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
                 'ntyp':len(atom),'occupations':"'smearing'",'smearing':"'marzari-vanderbilt'",
-                'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'ecutrho':ec_rho}
+                'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'ecutrho':ec_rho,
+                'noncolin':'.True.','lspinorb':'.True.'}
     fs_system=make_fstring_obj('system',var_system,val_system,'pw')
     fstream=fstream+fs_system
 
