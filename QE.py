@@ -46,10 +46,10 @@ sw_so=False                              #activate soc and noncliner calc.
 sw_apw=True                             #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = T                              #generate input file for scf calculation
-sw_dos = T                              #generate input file for dos calc.
+sw_scf = F                              #generate input file for scf calculation
+sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
-sw_bands = F                            #generate input file for band calc.
+sw_bands = T                            #generate input file for band calc.
 sw_ph = F                               #generate input file for phonon calc.
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
@@ -148,25 +148,64 @@ except NameError:
                      97,98,107,108,109,110,119,120,121,122,139,
                      140,141,142,197,199,204,206,211,214,217,220,229,230}:
             brav='I'
+            if space >195:
+                num_brav=3
+            elif space>75:
+                num_brav=5
+            else:
+                num_brav=10
         elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}:
             brav='F'
+            if space >195:
+                num_brav=2
+            else:
+                num_brav=9
         elif space in {146,148,155,160,161,166,167}:
             brav='R'
+            num_brav=7
         elif space in {38,39,40,41}:
             brav='A'
         elif space in {5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}:
             brav='C'
+            if space >16:
+                num_brav=11
+            else:
+                num_brav=12
         else:
             brav='P'
+            if space >194:
+                num_brav=1
+            elif space>75:
+                num_brav=4
+            elif space>74:
+                num_brav=7
+            elif space>15:
+                num_brav=8
+            elif space>2:
+                num_brav=13
+            else:
+                num_brav=14
             if space in range(168,195): #168>194 is Hexagonal
                 hexa=T
+                num_brav=6
     elif isinstance(space,str):
         if 'I' in space:
             brav='I'
+            if '3' in space:
+                num_brav=3
+            elif '4' in space:
+                num_brav=5
+            else:
+                num_brav=10
         elif 'F' in space:
             brav='F'
+            if '3' in space:
+                num_brav=2
+            else:
+                num_brav=9
         elif ('R' in space):
             brav='R'
+            num_brav=7
         elif ('A' in space):
             brav='A'
         elif ('C' in space):
@@ -175,48 +214,79 @@ except NameError:
             brav='P'
             if '6' in space:
                 hexa=T
+                num_brav=6
+            elif '3' in space:
+                if deg[2]==90:
+                    num_brav=1
+                else:
+                    num_brav=7
+            elif '4' in space:
+                num_brav=4
+            elif '2' in space or 'm' in space:
+                ck=(space.count('2')+space.count('m')
+                    +space.count('n')+space.count('c')
+                    +space.count('a')+space.count('b'))
+                if ck==3:
+                    num_brav=8
+                elif ck==2:
+                    num_brav=8
+                else:
+                    num_brav=13
+            else:
+                num_brav=14
 
 try: #detect k_list
     k_list
 except NameError: #common k-points list
-    if brav=='I':
-        if axis[0]==axis[1]:
-            if axis[0]==axis[2]: #cube
-                k_list=[['G',[0.,0.,0.]],['H',[0.5,0.5,0.5]],
-                        ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
-                        ['G',[0.,0.,0.]]]
-            else: #tetra
-                k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],
-                        ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
-                        ['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]]
-    elif brav=='F':
-        if axis[0]==axis[2]: #cube
-            k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],['G',[1.0,0.,0.]]
-                    ['L',[0.5,0.5,0.5]],['W',[0.5,0.25,0.75]],
-                    ['G',[0.,0.,0.]]]
-        else: #ortho
-            pass
-    elif brav=='C': #ortho
+    if num_brav==1: #simple cube
+        k_list=[['R',[.5,.5,0.]],['G',[0.,0.,0.]]
+                ,['X',[.5,0.,0.]],['M',[.5,.5,0.]],
+                ['G',[0.,0.,0.]]]
+    elif num_brav==2: #fcc
+        k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],['G',[1.0,0.,0.]]
+                ['L',[0.5,0.5,0.5]],['W',[0.5,0.25,0.75]],
+                ['G',[0.,0.,0.]]]
+    elif num_brav==3: #bcc
+        k_list=[['G',[0.,0.,0.]],['H',[0.5,0.5,0.5]],
+                ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
+                ['G',[0.,0.,0.]]]
+    elif num_brav==4: #simple tetra
+        k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],
+                ['M',[.5,.5,0.]],['G',[0.,0.,0.]],
+                ['Z',[0.,0.,.5]]]
+    elif num_brav==5: #bct
+        k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],
+                ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
+                ['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]]
+    elif num_brav==6: #hexagonal
+        k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
+                ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
+    elif num_brav==7: #trigonal
+        k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
+                ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
+    elif num_brav==8: #simple orthogonal
+        k_list=[['G',[0.,0.,0.]],['X',[0.5,0.0,0.]],
+                ['M',[0.5,0.5,0.]],['Y',[0.,0.5,0.]],
+                ['G',[0.,0.,0.]],['M',[0.5,0.5,0.]]]
+    elif num_brav==9: #fco
         k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
                 ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
-    else:
-        if hexa: #Phexa
-            k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
-                    ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
-        else:
-            if axis[0]==axis[1]:
-                if axis[0]==axis[2]: #cube
-                    k_list=[['R',[.5,.5,0.]],['G',[0.,0.,0.]]
-                            ,['X',[.5,0.,0.]],['M',[.5,.5,0.]],
-                            ['G',[0.,0.,0.]]]
-                else: #tetra
-                    k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],
-                            ['M',[.5,.5,0.]],['G',[0.,0.,0.]],
-                            ['Z',[0.,0.,.5]]]
-            else:
-                k_list=[['G',[0.,0.,0.]],['X',[0.5,0.0,0.]],
-                        ['M',[0.5,0.5,0.]],['Y',[0.,0.5,0.]],
-                        ['G',[0.,0.,0.]],['M',[0.5,0.5,0.]]]
+    elif num_brav==10: #bco
+        k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
+                ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
+    elif num_brav==11: #base centerd ortho
+        k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
+                ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
+    elif num_brav==12: #monocli
+        k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
+                ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
+    elif num_brav==13: #monocli
+        k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
+                ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
+    else: #monocli
+        k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
+                ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
+
 if sw_fs_plot:
     try: #detect fermi_mesh
         fermi_mesh
