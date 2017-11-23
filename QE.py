@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 #$ -cwd
 #$ -V -S /usr/local/Python-2.7.12/bin/python
-#$ -N FeSe
+#$ -N Pb
 #$ -e out.e
 #$ -o out.o
 #$ -pe smp 40
@@ -14,79 +14,72 @@
 #BSUB -J "Job name"
 #BSUB -o std_output_file
 #BSUB -m "node_name"
-(T,F)=(True,False)                #alias for bool numbers 
-(mpi_num, kthreads_num) = (40, 8) #number of threads for MPI/openMP
+(T,F)=(True,False)                      #alias for bool numbers
+(mpi_num, kthreads_num) = (40, 8)       #number of threads for MPI/openMP
 
 #optional parameters
-aa=5.514594 #lattice parameter a
-ab=5.476802 #lattice parameter b
-ac=8.576845 #lattice parameter c
-zca=0.15441 #non-toribial atomic position
-zas=0.66329 #non-toribial atomic position
+aa=4.9508                               #lattice parameter a
+ab=aa                                   #lattice parameter b
+ac=aa                                   #lattice parameter c
 
 #======================Crystal structure===========================
-prefix='CaFeAsF'                          #material name (or job name)
-space=67                                  #space group number
-axis=[aa,ab,ac]                           #lattice parameters a,b,c
-deg=[90,90,90]                            #lattice parameters alpha,beta,gamma
-atom=['Ca','Fe','As','F']                 #elements name
-atomic_position=[[[  0., .25, zca], [  0., .75, 1-zca]],
-                 [[ .25,  0.,  .5], [ .75,  0.,    .5]],
-                 [[  0., .25, zas], [  0., .75, 1-zas]],
-                 [[ .25,  0.,  0.], [ .75,  0.,    0.]]]
+prefix='Pb'                             #material name (or job name)
+space=225                               #space group
+axis=[aa,ab,ac]                         #lattice parameters a,b,c
+deg=[90,90,90]                          #lattice parameters alpha,beta,gamma
+atom=['Pb']                             #elements name
+atomic_position=[[[0. ,0. ,0.]]]
 #------------------------------------------------------------------
 ibrav=0                                 #brave lattice type
 type_xc='pbe'                           #type of exchange correlation functional
-pot_type=['%s.%s-nsp-van',
-          '%s.%s-spn-kjpaw_psl.0.2.1',
-          '%s.%s-n-kjpaw_psl.0.2',
-          '%s.%s-n-kjpaw_psl.0.1']      #psede potential name
-sw_so=False                              #activate soc and noncliner calc.
+pot_type=['%s.%s-dn-kjpaw_psl.1.0.0']   #psede potential name
+
+sw_so=F                                 #activate soc and noncliner calc.
 #====================directorys settings===========================
-sw_apw=True                             #switch of pp dir for paw( and soc) or not
+sw_apw=T                                #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = F                              #generate input file for scf calculation
+sw_scf = T                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
-sw_bands = T                            #generate input file for band calc.
-sw_ph = F                               #generate input file for phonon calc.
+sw_bands = F                            #generate input file for band calc.
+sw_ph = T                               #generate input file for phonon calc.
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
-sw_restart = F                          #switch restart tag or not
+sw_restart = T                          #switch restart tag or not
 
-sw_run = F                              #switch of execute DFT calculation or not
+sw_run = T                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
-k_mesh_scf=[10]                         #k mesh for DFT calc
+k_mesh_scf=[8]                          #k mesh for DFT calc
 k_mesh_bands=20                         #k mesh for bands calc
 k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
 (ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
 (e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
-nband=150                               #number of bands
+nband=80                                #number of bands
 nstep=500                               #max number of scf cycle's step
 dgs=0.025                               #dispersion of k-mesh
 de=0.1                                  #delta E for dos
-eband_win=[-3., 3.]                     #energy range of .ps file
-edos_win=[-3., 3.]                      #energy range of .dos file
+eband_win=[-6., 9.]                     #energy range of .ps file
+edos_win=[-0., 0.]                      #energy range of .dos file
 #======================ph_parameters===============================
-q_mesh_dyn=[6, 6, 2]                    #q mesh for phonon DFPT calc
+q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
 q_mesh_dos=8                            #q mesh for phonon dos calc
 ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
-pband_win=[0, 900]                      #energy range of .ps file
+pband_win=[0, 100]                      #energy range of .ps file
 #===================Wannier_parameters=============================
-nwann=10                                #number of wannier basis
-dis_win=[-3.00, 3.00]                   #max(min)_window, range of sub space energy
+nwann=3                                 #number of wannier basis
+dis_win=[-6.00, 9.00]                   #max(min)_window, range of sub space energy
 frz_win=[-0.0, 0.0]                     #froz_window dp22
-projection=[('Fe','d')]                 #projections, initial funcution of wannier
+projection=[('Pb','p')]                 #projections, initial funcution of wannier
 sw_fs_plot= F                           #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk=F                                   #Bloch(Wannier)_func
-uwrite=T                                #output unitary matrix for bloch to wannier
+uwrite=F                                #output unitary matrix for bloch to wannier
 #=============================modules==============================
 import numpy as np
 import os, datetime
@@ -94,8 +87,8 @@ import os, datetime
 TorF=lambda x:'.True.' if x else '.False.'
 w_conv=lambda a:'1.0E%d'%int(np.log10(a))
 #====================== physical parameters =======================
-bohr=round(0.52917721067, 6)           #Bohr Radius
-ibohr=1.0/bohr                         #inverse of Bohr Radius
+bohr=round(0.52917721067, 6)            #Bohr Radius
+ibohr=1.0/bohr                          #inverse of Bohr Radius
 #========================= atomic mass ============================
 mass={'H':1.00794,                                                                            'He':4.002602,
       'Li':6.941,'Be':9.012182,'B':10.811,'C':12.0107, 'N':14.0067,'O':15.9994,'F':18.9984032,'Ne':20.1797,
@@ -115,10 +108,11 @@ mass={'H':1.00794,                                                              
 #==========================global_variables========================
 axis=np.array(axis)
 fildvscf="'dvscf'"
-fildyn="'%s.dyn'"%prefix
-flfrc="'%s.fc'"%prefix
+fildyn='%s.dyn'%prefix
+flfrc='%s.fc'%prefix
 recover=TorF(sw_restart)
 restart="'from_scratch'"
+dxml='.xml' if sw_so else ''
 #==============serch several variables and initialize if can't find
 try: #detect type_xc
     type_xc
@@ -239,13 +233,13 @@ try: #detect k_list
     k_list
 except NameError: #common k-points list
     if num_brav==1: #simple cube
-        k_list=[['R',[.5,.5,0.]],['G',[0.,0.,0.]]
-                ,['X',[.5,0.,0.]],['M',[.5,.5,0.]],
+        k_list=[['R',[.5,.5,0.]],['G',[0.,0.,0.]],
+                ['X',[.5,0.,0.]],['M',[.5,.5,0.]],
                 ['G',[0.,0.,0.]]]
     elif num_brav==2: #fcc
-        k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],['G',[1.0,0.,0.]]
-                ['L',[0.5,0.5,0.5]],['W',[0.5,0.25,0.75]],
-                ['G',[0.,0.,0.]]]
+        k_list=[['G',[0.,0.,0.]],['X',[0.5,0.,0.5]],
+                ['G',[1.0,0.,0.]],['L',[0.5,0.5,0.5]],
+                ['W',[0.5,0.25,0.75]],['G',[0.,0.,0.]]]
     elif num_brav==3: #bcc
         k_list=[['G',[0.,0.,0.]],['H',[0.5,0.5,0.5]],
                 ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
@@ -663,7 +657,7 @@ def make_ph_in():
     fstream='%s\n'%prefix
     var_inputph=['tr2_ph','prefix','fildyn','trans','ldisp','recover',
                  'outdir','fildvscf','electron_phonon','nq1','nq2','nq3']
-    val_inputph={'tr2_ph':w_conv(ph_conv),'prefix':"'%s'"%prefix,'fildyn':fildyn,'fildvscf':fildvscf,
+    val_inputph={'tr2_ph':w_conv(ph_conv),'prefix':"'%s'"%prefix,'fildyn':"'%s'"%fildyn,'fildvscf':fildvscf,
                  'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','recover':recover,
                  'electron_phonon':"'interpolated'",
                  'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
@@ -675,7 +669,7 @@ def make_q2r():
     fname='%s.q2r'%(prefix)
     fstream=''
     fs_input=make_fstring_obj('input',['fildyn','flfrc','la2F'],
-                              {'fildyn':fildyn,'flfrc':flfrc,'la2F':'.True.'},'q2r')
+                              {'fildyn':"'%s'"%(fildyn+dxml),'flfrc':"'%s'"%flfrc,'la2F':'.True.'},'q2r')
     fstream=fstream+fs_input
     write_file(fname,fstream)
 
@@ -685,7 +679,7 @@ def make_matdyn(phband):
         fext='freq'
         dos=False
         input_list=['flfrc','asr','dos']
-        input_val={'flfrc':flfrc,'asr':asr,'dos':'.False.'}
+        input_val={'flfrc':"'%s'"%(flfrc+dxml),'asr':asr,'dos':'.False.'}
     else:
         fext='matdyn'
         dos=True
@@ -693,7 +687,7 @@ def make_matdyn(phband):
         nk2=q_mesh_dos
         nk3=q_mesh_dos
         input_list=['flfrc','asr','dos','la2F','nk1','nk2','nk3']
-        input_val={'flfrc':flfrc,'asr':asr,'dos':'.True.','la2F':'.True.','nk1':nk1,'nk2':nk2,'nk3':nk3}
+        input_val={'flfrc':"'%s'"%(flfrc+dxml),'asr':asr,'dos':'.True.','la2F':'.True.','nk1':nk1,'nk2':nk2,'nk3':nk3}
     fname='%s.%s'%(prefix,fext)
     fstream=''
     fs_input=make_fstring_obj('input',input_list,input_val,'matdyn')
@@ -725,8 +719,25 @@ def make_plotband_in(mode,win):
         ef=0.
         win_min=0
         win_max=win[1]
-    format=(name,fext,win_min,win_max,name_out,name_out,ef,nband,ef)
-    fstream='%s.%s\n%d %d\n%s.xmgr\n%s.ps\n%9.5f\n%6.2f %6.2f\n'%format
+    erange=win_max-win_min
+    if 1000<erange:
+        egrid=400
+    elif 500<erange<=1000:
+        egrid=200
+    elif 100<erange<=500:
+        egrid=100
+    elif 50<erange<=100:
+        egrid=20
+    elif 10<erange<=50:
+        egrid=10
+    elif 5<erange<=10:
+        egrid=2
+    elif 1<erange<=5:
+        egrid=1
+    else:
+        egrid=0.2
+    format=(name,fext,win_min,win_max,name_out,name_out,ef,egrid,ef)
+    fstream='%s.%s\n%7.3f %7.3f\n%s.xmgr\n%s.ps\n%9.5f\n%6.2f %6.2f\n'%format
     write_file(fname,fstream)
 #---------------------------- main ---------------------------------
 def main(prefix):
@@ -792,6 +803,8 @@ def main(prefix):
             date()
         make_q2r() #make input file for q2r.x
         if sw_run:
+            if sw_so:
+                os_and_print('cp %s.dyn0 %s.dyn0.xml'%(prefix,prefix))
             os_and_print(mpiexe+'q2r.x '+npool+os_io(prefix,'q2r'))
         make_matdyn(False) #make input file for matdyn.x (for dos and alpha^2F calculation)
         if sw_run:
