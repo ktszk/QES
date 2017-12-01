@@ -6,8 +6,11 @@
 #$ -e out.e
 #$ -o out.o
 #$ -pe smp 40
-##$ -pe fillup 64
+##$ -pe fillup 120
 #$ -q salvia.q
+##$ -q salvia.q@salvia1
+##$ -q salvia.q@salvia4
+##$ -q salvia.q@salvia5
 ##$ -q lantana.q
 #BSUB -q "queue_name"
 #BSUB -n 16
@@ -16,6 +19,9 @@
 #BSUB -m "node_name"
 (T,F)=(True,False)                      #alias for bool numbers
 (mpi_num, kthreads_num) = (40, 8)       #number of threads for MPI/openMP
+ithreads_num = 0                        #number of image for ph.x
+
+(start_q, last_q)=(0, 0)
 
 #optional parameters
 aa=4.9508                               #lattice parameter a
@@ -39,11 +45,14 @@ sw_so=F                                 #activate soc and noncliner calc.
 sw_apw=T                                #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = T                              #generate input file for scf calculation
+sw_scf = F                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
-sw_ph = T                               #generate input file for phonon calc.
+sw_ph = F                               #generate input file for phonon calc.
+sw_dyn = T
+sw_epw = F                              #generate input file for epw.x 
+sw_save_dir = T
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
@@ -59,18 +68,20 @@ k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
 (ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
 (e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
-nband=80                                #number of bands
+nband=50                                #number of bands
 nstep=500                               #max number of scf cycle's step
 dgs=0.025                               #dispersion of k-mesh
 de=0.1                                  #delta E for dos
 eband_win=[-6., 9.]                     #energy range of .ps file
 edos_win=[-0., 0.]                      #energy range of .dos file
+wf_collect=T
 #======================ph_parameters===============================
 q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
 q_mesh_dos=8                            #q mesh for phonon dos calc
 ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
 pband_win=[0, 100]                      #energy range of .ps file
+sw_ep = T                               #swich to calc. e-p interaction or not
 #===================Wannier_parameters=============================
 nwann=3                                 #number of wannier basis
 dis_win=[-6.00, 9.00]                   #max(min)_window, range of sub space energy
@@ -127,64 +138,47 @@ else:
 UPF=[pp%(at,txc)+'.UPF' for pp, at in zip(pot_type,atom)]
 
 try: #detect brav
-    brav
-    try:
-        hexa
-    except NameError:
-        if isinstance(space, int):
-            hexa=T if space in range(168,195) else F
-        elif isinstance(space, str):
-            hexa=T if '6' in space else F
+    num_brav
 except NameError:
-    hexa=F
     if isinstance(space,int):
         if space in {23,24,44,45,46,71,72,73,74,79,80,82,87,88,
                      97,98,107,108,109,110,119,120,121,122,139,
-                     140,141,142,197,199,204,206,211,214,217,220,229,230}:
-            brav='I'
-            if space >195:
+                     140,141,142,197,199,204,206,211,214,217,220,229,230}: #I
+            if space >195: #BCC
                 num_brav=3
-            elif space>75:
+            elif space>75: #BCT
                 num_brav=5
-            else:
+            else: #BCO
                 num_brav=10
-        elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}:
-            brav='F'
-            if space >195:
+        elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}: #F
+            if space >195: #FCC
                 num_brav=2
-            else:
+            else: #FCO
                 num_brav=9
-        elif space in {146,148,155,160,161,166,167}:
-            brav='R'
+        elif space in {146,148,155,160,161,166,167}: #trigonal
             num_brav=7
-        elif space in {38,39,40,41}:
-            brav='A'
-        elif space in {5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}:
-            brav='C'
+        elif space in {38,39,40,41,5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}: #ABC
             if space >16:
                 num_brav=11
             else:
                 num_brav=12
-        else:
-            brav='P'
-            if space >194:
+        else: #P
+            if space >194: #SC
                 num_brav=1
-            elif space>75:
+            elif space>75: #ST
                 num_brav=4
-            elif space>74:
+            elif space>74: #Trigonal
                 num_brav=7
-            elif space>15:
+            elif space>15: #SO
                 num_brav=8
             elif space>2:
                 num_brav=13
             else:
                 num_brav=14
             if space in range(168,195): #168>194 is Hexagonal
-                hexa=T
                 num_brav=6
     elif isinstance(space,str):
         if 'I' in space:
-            brav='I'
             if '3' in space:
                 num_brav=3
             elif '4' in space:
@@ -192,22 +186,18 @@ except NameError:
             else:
                 num_brav=10
         elif 'F' in space:
-            brav='F'
             if '3' in space:
                 num_brav=2
             else:
                 num_brav=9
         elif ('R' in space):
-            brav='R'
             num_brav=7
         elif ('A' in space):
-            brav='A'
+            pass
         elif ('C' in space):
-            brav='C'
+            num_brav=11
         else:
-            brav='P'
             if '6' in space:
-                hexa=T
                 num_brav=6
             elif '3' in space:
                 if deg[2]==90:
@@ -342,7 +332,7 @@ def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
     return fstring
 
 def atom_position(atom,atomic_position):
-    mat=get_cr_mat(brav,False)
+    mat=get_cr_mat(num_brav)
     mat=np.linalg.inv(mat).T
     aposition=[[list(mat.dot(np.array(ap))) for ap in app] for app in atomic_position]
     atom_string=''
@@ -352,29 +342,24 @@ def atom_position(atom,atomic_position):
 
     return atom_string
 
-def get_cr_mat(brav,hexa):
-    if brav=='P':
-        if hexa:
-            mat=np.array([[ 1., 0.            , 0.],
-                          [-.5, .5*np.sqrt(3.), 0.],
-                          [ 0., 0.            , 1.]])
-        else:
-            mat=np.identity(3)
-    elif brav=='I':
-        mat=np.array([[ .5, -.5, .5],
-                      [ .5,  .5, .5],
-                      [-.5, -.5, .5]])
-    elif brav=='F':
+def get_cr_mat(num_brav):
+    if num_brav in {1,4,8}: #Simple
+        mat=np.identity(3)
+    elif num_brav in {2,9}: #Face center
         mat=np.array([[-.5, 0., .5],
                       [ 0., .5, .5],
                       [-.5, .5, 0.]])
-    elif brav=='C':
-        mat=np.array([[ .5, .5, 0.],
-                      [-.5, .5, 0.],
-                      [ 0., 0., 1.]])
-    elif brav=='R':
-        phase=np.pi*deg[0]/180
-        phase2=np.pi*deg[0]/180
+    elif num_brav in {3,5,10}: #Body center
+        mat=np.array([[ .5, -.5, .5],
+                      [ .5,  .5, .5],
+                      [-.5, -.5, .5]])
+    elif num_brav==6: #hexa
+        mat=np.array([[ 1., 0.            , 0.],
+                      [-.5, .5*np.sqrt(3.), 0.],
+                      [ 0., 0.            , 1.]])
+    elif num_brav==7: #trigonal
+        phase=np.pi*deg[0]/180.
+        phase2=np.pi*deg[0]/180.
         r1=np.cos(phase)
         r2=np.sin(phase)
         r3=r2*np.cos(phase2)
@@ -382,19 +367,40 @@ def get_cr_mat(brav,hexa):
         mat=np.array([[ 1., 0.,  0.],
                       [ r1, r2,  0.],
                       [ r1, r3, r4]])
-    elif brav=='A':
-        mat=np.array([[ 1., 0., 0.],
-                      [ 0., .5, .5],
-                      [ 0.,-.5, .5]])
-    elif brav=='B':
-        mat=np.array([[ .5, 0., .5],
-                      [ 0., 1., 0.],
-                      [-.5, 0., .5]])
+    elif num_brav==11: #Base center
+        mat=np.array([[ .5, .5, 0.],
+                      [-.5, .5, 0.],
+                      [ 0., 0., 1.]])
+    elif num_brav==12: #Base center
+        pass
+    elif num_brav==13: #Base center
+        pass
+    elif num_brav==14: #Base center
+        phase=np.pi*deg[0]/180.
+        phase2=np.pi*deg[1]/180.
+        phase3=np.pi*deg[2]/180.
+        ax1=axis[1]/axis[0]
+        ax2=axis[2]/axis[0]
+        r1=np.cos(phase)*ax1
+        r2=np.sin(phase)*ax1
+        r3=np.cos(phase3)*ax2
+        r4=np.sin(phase)*np.cos(phase2)*ax2
+        r5=np.sin(phase2)*ax2
+        mat=np.array([[ 1., 0.,  0.],
+                      [ r1, r2,  0.],
+                      [ r3, r4, r5]])
+    else:
+        try:
+            cry_ax
+            mat=cry_ax
+        except NameError:
+            print('please set crystal axes matrix cry_ax')
+            exit()
     return mat
 
 def cell_parameter_stream(axis,deg):
     mat_ax=np.identity(3)*axis*ibohr
-    mat=get_cr_mat(brav,hexa)
+    mat=get_cr_mat(num_brav)
     a_vec=list(mat.dot(mat_ax))
     cell_string=''
     for aa in a_vec:
@@ -476,7 +482,7 @@ def make_pw_in(calc):
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':w_conv(e_conv),
                  'forc_conv_thr':w_conv(f_conv),'nstep':nstep,'tstress':'.True.','tprnfor':'.True.',
-                 'wf_collect':'.True.'}
+                 'wf_collect':TorF(wf_collect)}
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream=fstream+fs_control
 
@@ -655,11 +661,20 @@ def make_win():
 def make_ph_in():
     fname='%s.ph'%prefix
     fstream='%s\n'%prefix
-    var_inputph=['tr2_ph','prefix','fildyn','trans','ldisp','recover',
-                 'outdir','fildvscf','electron_phonon','nq1','nq2','nq3']
+    var_inputph=['tr2_ph','prefix','fildyn','trans','ldisp','lqdir','recover',
+                 'outdir']
+    if ithreads_num==0:
+        var_inputph=var_inputph+['fildvscf']
+    if sw_ep:
+        var_inputph=var_inputph+['electron_phonon']
+    if start_q!=0:
+        var_inputph=var_inputph+['start_q']
+    if last_q!=0 and start_q<=last_q:
+        var_inputph=var_inputph+['last_q']
+    var_inputph=var_inputph+['nq1','nq2','nq3']
     val_inputph={'tr2_ph':w_conv(ph_conv),'prefix':"'%s'"%prefix,'fildyn':"'%s'"%fildyn,'fildvscf':fildvscf,
-                 'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','recover':recover,
-                 'electron_phonon':"'interpolated'",
+                 'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','lqdir':'.True.','recover':recover,
+                 'electron_phonon':"'interpolated'",'start_q':start_q,'last_q':last_q,
                  'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
     fs_inputph=make_fstring_obj('inputph',var_inputph,val_inputph,'ph')
     fstream=fstream+fs_inputph
@@ -668,8 +683,10 @@ def make_ph_in():
 def make_q2r():
     fname='%s.q2r'%(prefix)
     fstream=''
-    fs_input=make_fstring_obj('input',['fildyn','flfrc','la2F'],
-                              {'fildyn':"'%s'"%(fildyn+dxml),'flfrc':"'%s'"%flfrc,'la2F':'.True.'},'q2r')
+    inputq2r=['fildyn','flfrc']
+    if sw_ep:
+        inputq2r=inputq2r+['la2F']
+    fs_input=make_fstring_obj('input',inputq2r,{'fildyn':"'%s'"%(fildyn+dxml),'flfrc':"'%s'"%flfrc,'la2F':'.True.'},'q2r')
     fstream=fstream+fs_input
     write_file(fname,fstream)
 
@@ -686,14 +703,17 @@ def make_matdyn(phband):
         nk1=q_mesh_dos
         nk2=q_mesh_dos
         nk3=q_mesh_dos
-        input_list=['flfrc','asr','dos','la2F','nk1','nk2','nk3']
+        input_list=['flfrc','asr','dos']
+        if sw_ep:
+            input_list=input_list+['la2F']
+        input_list=input_list+['nk1','nk2','nk3']
         input_val={'flfrc':"'%s'"%(flfrc+dxml),'asr':asr,'dos':'.True.','la2F':'.True.','nk1':nk1,'nk2':nk2,'nk3':nk3}
     fname='%s.%s'%(prefix,fext)
     fstream=''
     fs_input=make_fstring_obj('input',input_list,input_val,'matdyn')
     fstream=fstream+fs_input
     if phband:
-        mat=get_cr_mat(brav,hexa)
+        mat=get_cr_mat(num_brav)
         avec=mat*axis
         alat=np.sqrt(sum(avec[0]**2))
         q_list=[[kl[0],list(np.linalg.inv(mat*axis/alat).dot(kl[1]))] for kl in k_list]
@@ -739,12 +759,17 @@ def make_plotband_in(mode,win):
     format=(name,fext,win_min,win_max,name_out,name_out,ef,egrid,ef)
     fstream='%s.%s\n%7.3f %7.3f\n%s.xmgr\n%s.ps\n%9.5f\n%6.2f %6.2f\n'%format
     write_file(fname,fstream)
+
+def make_epw():
+    pass
+
 #---------------------------- main ---------------------------------
 def main(prefix):
     date()
     mpiopt='$LSF_BINDIR/openmpi-' if sw_bsub else ''
     mpiexe=mpiopt+'mpirun -np %d '%mpi_num if sw_mpi else ''
     npool='-nk %d '%kthreads_num if kthreads_num!=0 else ''
+    nimage='-ni %d '%ithreads_num if ithreads_num!=0 else ''
     wan_exe='wan.x'
     def os_io(prefix,exe):
         name='%s.%s'%(prefix,exe)
@@ -799,8 +824,10 @@ def main(prefix):
     if sw_ph: #calculate phonon
         make_ph_in() #make input file for ph.x
         if sw_run:
-            os_and_print(mpiexe+'ph.x '+npool+os_io(prefix,'ph'))
+            print mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph')
+            os_and_print(mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph'))
             date()
+    if sw_dyn:
         make_q2r() #make input file for q2r.x
         if sw_run:
             if sw_so:
@@ -816,7 +843,27 @@ def main(prefix):
         make_plotband_in(False,pband_win) #make input file for plotband.x
         if sw_run:
             os_and_print('plotband.x '+os_io('pband','plotband'))
+    if sw_save_dir:
+        import shutil
+        for f in open('%s.ph.out'%prefix):
+            if (f.find('q-points):')!=-1):
+                nq=int(f.strip().split()[1].split('q')[0])
+                break
+        if not os.path.isdir('save'):
+            os.mkdir('save')
+        if not os.path.isdir('save/'+prefix+'.phsave'):
+            shutil.copytree('_ph0/'+prefix+'.phsave','save/'+prefix+'.phsave')
+        for i in range(nq):
+            qn=str(i+1)
+            dvscf_dir='' if i==0 else prefix+'.q_'+qn+'/'
+            shutil.copy(prefix+'.dyn'+qn+dxml,'save/'+prefix+'.dyn_q'+qn)
+            shutil.copy('_ph0/'+dvscf_dir+prefix+'.dvscf1','save/'+prefix+'.dvscf_q'+qn)
+    if sw_epw:
+        make_epw()
+        if sw_run:
+            os_and_print(mpiexe+'epw.x '+npool+os_io(prefix,'epw'))
     date()
+
 
 if __name__=="__main__":
     main(prefix)
