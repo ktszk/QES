@@ -507,18 +507,18 @@ def make_pw_in(calc):
                 val_system.update({'celldm(2)':axis[1]/axis[0]})
                 if ibrav in (12,13):
                     var_system=var_system+['celldm(4)']
-                    val_system.update({'celldm(4)':np.cos(np.pi*deg[0]/180.)})
+                    val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.)})
                 elif ibrav==-12:
                     var_system=var_system+['celldm(5)']
                     val_system.update({'celldm(5)':np.cos(np.pi*deg[1]/180.)})
                 elif ibrav==14:
                     var_system=var_system+['celldm(4)','celldm(5)','celldm(6)']
-                    val_system.update({'celldm(4)':np.cos(np.pi*deg[0]/180.),
+                    val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.),
                                        'celldm(5)':np.cos(np.pi*deg[1]/180.),
-                                       'celldm(6)':np.cos(np.pi*deg[2]/180.)})
+                                       'celldm(6)':np.cos(np.pi*deg[0]/180.)})
         elif ibrav in (5,-5):
             var_system=var_system+['celldm(4)']
-            val_system.update({'celldm(4)':np.cos(np.pi*deg[0]/180.)})
+            val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.)})
     fs_system=make_fstring_obj('system',var_system,val_system,'pw')
     fstream=fstream+fs_system
 
