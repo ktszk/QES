@@ -36,29 +36,29 @@ deg=[90,90,90]                          #lattice parameters alpha,beta,gamma
 atom=['Pb']                             #elements name
 atomic_position=[[[0. ,0. ,0.]]]
 #------------------------------------------------------------------
-ibrav=0                                 #brave lattice type
+ibrav=1                                 #brave lattice type
 type_xc='pbe'                           #type of exchange correlation functional
 pot_type=['%s.%s-dn-kjpaw_psl.1.0.0']   #psede potential name
 
-sw_so=F                                 #activate soc and noncliner calc.
+sw_so=T                                 #activate soc and noncliner calc.
 #====================directorys settings===========================
 sw_apw=T                                #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = F                              #generate input file for scf calculation
+sw_scf = T                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
 sw_ph = F                               #generate input file for phonon calc.
-sw_dyn = T
+sw_dyn = F
 sw_epw = F                              #generate input file for epw.x 
-sw_save_dir = T
+sw_save_dir = F
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
 sw_restart = T                          #switch restart tag or not
 
-sw_run = T                              #switch of execute DFT calculation or not
+sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
@@ -83,10 +83,11 @@ ph_conv=1.0e-14                         #threshold of energy's convergence for p
 pband_win=[0, 100]                      #energy range of .ps file
 sw_ep = T                               #swich to calc. e-p interaction or not
 #===================Wannier_parameters=============================
-nwann=3                                 #number of wannier basis
+nwann=6                                 #number of wannier basis
 dis_win=[-6.00, 9.00]                   #max(min)_window, range of sub space energy
 frz_win=[-0.0, 0.0]                     #froz_window dp22
-projection=[('Pb','p')]                 #projections, initial funcution of wannier
+projection=[('Pb','p(u)')
+            ,('Pb','p(d)')]             #projections, initial funcution of wannier
 sw_fs_plot= F                           #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk=F                                   #Bloch(Wannier)_func
@@ -462,6 +463,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
         exit()
 
     return k_string
+
 #---------------------input file generators-------------------------------
 def make_pw_in(calc):
     def atomic_parameters_stream(atom,atomic_position,UPF):
@@ -494,6 +496,29 @@ def make_pw_in(calc):
                 'ntyp':len(atom),'occupations':"'smearing'",'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'ecutrho':ec_rho,
                 'noncolin':'.True.','lspinorb':'.True.'}
+    if ibrav!=0:
+        var_system=var_system+['celldm(1)']
+        val_system.update({'celldm(1)':axis[0]*ibohr})
+        if ibrav in {4,6,7,8,9,10,11,12,13,14}:
+            var_system=var_system+['celldm(3)']
+            val_system.update({'celldm(3)':axis[2]/axis[0]})
+            if ibrav in range(8,14)+[-12]:
+                var_system=var_system+['celldm(2)']
+                val_system.update({'celldm(2)':axis[1]/axis[0]})
+                if ibrav in (12,13):
+                    var_system=var_system+['celldm(4)']
+                    val_system.update({'celldm(4)':np.cos(np.pi*deg[0]/180.)})
+                elif ibrav==-12:
+                    var_system=var_system+['celldm(5)']
+                    val_system.update({'celldm(5)':np.cos(np.pi*deg[1]/180.)})
+                elif ibrav==14:
+                    var_system=var_system+['celldm(4)','celldm(5)','celldm(6)']
+                    val_system.update({'celldm(4)':np.cos(np.pi*deg[0]/180.),
+                                       'celldm(5)':np.cos(np.pi*deg[1]/180.),
+                                       'celldm(6)':np.cos(np.pi*deg[2]/180.)})
+        elif ibrav in (5,-5):
+            var_system=var_system+['celldm(4)']
+            val_system.update({'celldm(4)':np.cos(np.pi*deg[0]/180.)})
     fs_system=make_fstring_obj('system',var_system,val_system,'pw')
     fstream=fstream+fs_system
 
@@ -636,6 +661,8 @@ def make_win():
     ef=get_ef(prefix,'nscf')
 
     num_val=[['num_bands',nband],['num_wann',nwann],['num_iter',300]]
+    if sw_so:
+        num_val=num_val+[['spinors','.True.']]
     num_strings=win_strings(num_val,'num')
 
     dis_val=[['dis_win_max',dis_win[1]+ef],['dis_win_min',dis_win[0]+ef],
