@@ -36,7 +36,7 @@ deg=[90,90,90]                          #lattice parameters alpha,beta,gamma
 atom=['Pb']                             #elements name
 atomic_position=[[[0. ,0. ,0.]]]
 #------------------------------------------------------------------
-ibrav=1                                 #brave lattice type
+ibrav=4                                 #brave lattice type
 type_xc='pbe'                           #type of exchange correlation functional
 pot_type=['%s.%s-dn-kjpaw_psl.1.0.0']   #psede potential name
 
@@ -219,7 +219,8 @@ except NameError:
                     num_brav=13
             else:
                 num_brav=14
-
+if ibrav!=0:
+    ibrav=num_brav
 try: #detect k_list
     k_list
 except NameError: #common k-points list
@@ -333,7 +334,7 @@ def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
     return fstring
 
 def atom_position(atom,atomic_position):
-    mat=get_cr_mat(num_brav)
+    mat=get_cr_mat(num_brav,F)
     mat=np.linalg.inv(mat).T
     aposition=[[list(mat.dot(np.array(ap))) for ap in app] for app in atomic_position]
     atom_string=''
@@ -343,7 +344,7 @@ def atom_position(atom,atomic_position):
 
     return atom_string
 
-def get_cr_mat(num_brav):
+def get_cr_mat(num_brav,sw=T):
     if num_brav in {1,4,8}: #Simple
         mat=np.identity(3)
     elif num_brav in {2,9}: #Face center
@@ -359,15 +360,16 @@ def get_cr_mat(num_brav):
                       [-.5, .5*np.sqrt(3.), 0.],
                       [ 0., 0.            , 1.]])
     elif num_brav==7: #trigonal
-        phase=np.pi*deg[0]/180.
-        phase2=np.pi*deg[0]/180.
-        r1=np.cos(phase)
-        r2=np.sin(phase)
-        r3=r2*np.cos(phase2)
-        r4=r2*np.sin(phase2)
-        mat=np.array([[ 1., 0.,  0.],
-                      [ r1, r2,  0.],
-                      [ r1, r3, r4]])
+        cg=np.cos(np.pi*deg[2]/180)
+        tx=np.sqrt((1-cg)*0.5)
+        ty=np.sqrt((1-cg)/6)
+        tz=np.sqrt((1+2*cg)/3)
+        if sw:
+            mat=np.array([[ tx,  -ty, tz],
+                          [ 0., 2*ty, tz],
+                          [-tx,  -ty, tz]])
+        else:
+            mat=np.identity(3)
     elif num_brav==11: #Base center
         mat=np.array([[ .5, .5, 0.],
                       [-.5, .5, 0.],
@@ -497,7 +499,17 @@ def make_pw_in(calc):
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'ecutrho':ec_rho,
                 'noncolin':'.True.','lspinorb':'.True.'}
     if ibrav!=0:
-        var_system=var_system+['celldm(1)']
+        """
+        setting cell parameters
+        ibrav = 1~3: cube (1: P, 2: F, 3: I)
+              = 4: Hexagonal and Trigonal P
+              = 5,-5: Trigonal R 3fold axis 5: c or -5: <1,1,1>
+              = 6,7: Tetragnal (6: P, 7: I)
+              = 8~11: Orthorhombic (8: P, 9,-9: B, 10: F, 11: I)
+              = 12~13: Monoclinic (12,-12: P, 13: B)
+              = 14: Triclinic
+        """
+        var_system=var_system+['celldm(1)'] 
         val_system.update({'celldm(1)':axis[0]*ibohr})
         if ibrav in {4,6,7,8,9,10,11,12,13,14}:
             var_system=var_system+['celldm(3)']
