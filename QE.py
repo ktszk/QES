@@ -41,6 +41,8 @@ type_xc='pbe'                           #type of exchange correlation functional
 pot_type=['%s.%s-dn-kjpaw_psl.1.0.0']   #psede potential name
 
 sw_so=T                                 #activate soc and noncliner calc.
+sw_vdW=T                                #activate van der Waals interaction
+vdW_corr='DFT-D'                        #set van der Waals type
 #====================directorys settings===========================
 sw_apw=T                                #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
@@ -50,9 +52,9 @@ sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
 sw_ph = F                               #generate input file for phonon calc.
-sw_dyn = F
+sw_dyn = F                              #generate input file f0r matdyn.x etc.
 sw_epw = F                              #generate input file for epw.x 
-sw_save_dir = F
+sw_save_dir = F                         #generate save directory for epw
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
@@ -271,7 +273,7 @@ except NameError: #common k-points list
                 ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
     else: #monocli
         k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
-                ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
+                ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
 
 if sw_fs_plot:
     try: #detect fermi_mesh
@@ -490,14 +492,16 @@ def make_pw_in(calc):
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream=fstream+fs_control
 
+    val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
+                'ntyp':len(atom),'occupations':"'smearing'",'smearing':"'marzari-vanderbilt'",
+                'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'ecutrho':ec_rho,
+                'noncolin':'.True.','lspinorb':'.True.','vdw_corr':"'%s'"%vdW_corr}
     var_system=['ibrav','nat','ntyp','occupations','smearing','degauss',
                 'la2f','nbnd','ecutwfc','ecutrho']
     if sw_so:
         var_system=var_system+['noncolin','lspinorb']
-    val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
-                'ntyp':len(atom),'occupations':"'smearing'",'smearing':"'marzari-vanderbilt'",
-                'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'ecutrho':ec_rho,
-                'noncolin':'.True.','lspinorb':'.True.'}
+    if sw_vdW:
+       var_system=var_system+['vdw_corr']
     if ibrav!=0:
         """
         setting cell parameters
