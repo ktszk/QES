@@ -222,7 +222,33 @@ except NameError:
             else:
                 num_brav=14
 if ibrav!=0:
-    ibrav=num_brav
+        """
+        setting cell parameters
+        ibrav = 1~3: cube (1: P, 2: F, 3: I)
+              = 4: Hexagonal and Trigonal P
+              = 5,-5: Trigonal R 3fold axis 5: c or -5: <1,1,1>
+              = 6,7: Tetragnal (6: P, 7: I)
+              = 8~11: Orthorhombic (8: P, 9,-9: B, 10: F, 11: I)
+              = 12~13: Monoclinic (12,-12: P, 13: B)
+              = 14: Triclinic
+        """
+    if num_brav in (1,2,3,8,10,14):
+        ibrav=num_brav
+    elif num_brav==4:
+        ibrav=6
+    elif num_brav==5:
+        ibrav=7
+    elif num_brav in (6,7):
+        ibrav=4
+    elif num_brav==9:
+        ibrav=11
+    elif num_brav==11:
+        ibrav=10
+    elif num_brav==12:
+        ibrav=13
+    elif num_brav==13:
+        ibrav=13
+
 try: #detect k_list
     k_list
 except NameError: #common k-points list
