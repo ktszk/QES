@@ -18,7 +18,7 @@
 #BSUB -o std_output_file
 #BSUB -m "node_name"
 (T,F)=(True,False)                      #alias for bool numbers
-(mpi_num, kthreads_num) = (40, 8)       #number of threads for MPI/openMP
+(mpi_num, kthreads_num) = (4, 0)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
 
 (start_q, last_q)=(0, 0)
@@ -40,14 +40,14 @@ ibrav=4                                 #brave lattice type
 type_xc='pbe'                           #type of exchange correlation functional
 pot_type=['%s.%s-dn-kjpaw_psl.1.0.0']   #psede potential name
 
-sw_so=T                                 #activate soc and noncliner calc.
-sw_vdW=T                                #activate van der Waals interaction
-vdW_corr='DFT-D'                        #set van der Waals type
+sw_so=F                                 #activate soc and noncliner calc.
+sw_vdW=F                                #activate van der Waals interaction
+vdW_corr='vdW-DF'                        #set van der Waals type
 #====================directorys settings===========================
 sw_apw=T                                #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = T                              #generate input file for scf calculation
+sw_scf = F                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
@@ -222,23 +222,13 @@ except NameError:
             else:
                 num_brav=14
 if ibrav!=0:
-        """
-        setting cell parameters
-        ibrav = 1~3: cube (1: P, 2: F, 3: I)
-              = 4: Hexagonal and Trigonal P
-              = 5,-5: Trigonal R 3fold axis 5: c or -5: <1,1,1>
-              = 6,7: Tetragnal (6: P, 7: I)
-              = 8~11: Orthorhombic (8: P, 9,-9: B, 10: F, 11: I)
-              = 12~13: Monoclinic (12,-12: P, 13: B)
-              = 14: Triclinic
-        """
-    if num_brav in (1,2,3,8,10,14):
+    if num_brav in {1,2,3,8,10,14}:
         ibrav=num_brav
     elif num_brav==4:
         ibrav=6
     elif num_brav==5:
         ibrav=7
-    elif num_brav in (6,7):
+    elif num_brav in {6,7}:
         ibrav=4
     elif num_brav==9:
         ibrav=11
@@ -527,7 +517,14 @@ def make_pw_in(calc):
     if sw_so:
         var_system=var_system+['noncolin','lspinorb']
     if sw_vdW:
-       var_system=var_system+['vdw_corr']
+        if vdW_corr=='vdW-DF':
+            if sw_so:
+                print('We cannot use vdW-DF with noncllinear spin')
+            else:
+                var_system=var_system+['input_dft']
+                val_system.update({'input_dft':"'vdW-DF'"})
+        else:
+            var_system=var_system+['vdw_corr']
     if ibrav!=0:
         """
         setting cell parameters
@@ -845,6 +842,8 @@ def main(prefix):
         return '<%s>%s.out'%tuple([name]*2)
     if sw_scf: #calculate scf cycle
         make_pw_in('scf') #make pw.x's input file for scf
+        if sw_vdW and vdW_corr=='vdW-DF' and (not os.path.isfile('vdW_kernel_table')):
+            os_and_print(mpiexe+'generate_vdW_kernel_table.x ')
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
             date()
