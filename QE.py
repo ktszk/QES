@@ -47,7 +47,7 @@ vdW_corr='vdW-DF'                        #set van der Waals type
 sw_apw=T                                #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = F                              #generate input file for scf calculation
+sw_scf = T                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
@@ -150,7 +150,7 @@ except NameError:
             if space >195: #BCC
                 num_brav=3
             elif space>75: #BCT
-                num_brav=5
+                num_brav=7
             else: #BCO
                 num_brav=10
         elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}: #F
@@ -159,61 +159,61 @@ except NameError:
             else: #FCO
                 num_brav=9
         elif space in {146,148,155,160,161,166,167}: #trigonal
-            num_brav=7
+            num_brav=5
         elif space in {38,39,40,41,5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}: #ABC
-            if space >16:
+            if space >16: #Ortho
                 num_brav=11
-            else:
+            else: #monocli
                 num_brav=12
         else: #P
             if space >194: #SC
                 num_brav=1
             elif space>75: #ST
-                num_brav=4
+                num_brav=6
             elif space>74: #Trigonal
-                num_brav=7
+                num_brav=4
             elif space>15: #SO
                 num_brav=8
-            elif space>2:
+            elif space>2: #monocli
                 num_brav=13
             else:
                 num_brav=14
             if space in range(168,195): #168>194 is Hexagonal
-                num_brav=6
-    elif isinstance(space,str):
-        if 'I' in space:
-            if '3' in space:
-                num_brav=3
-            elif '4' in space:
-                num_brav=5
-            else:
-                num_brav=10
-        elif 'F' in space:
-            if '3' in space:
-                num_brav=2
-            else:
-                num_brav=9
-        elif ('R' in space):
-            num_brav=7
-        elif ('A' in space):
-            pass
-        elif ('C' in space):
-            num_brav=11
-        else:
-            if '6' in space:
-                num_brav=6
-            elif '3' in space:
-                if deg[2]==90:
-                    num_brav=1
-                else:
-                    num_brav=7
-            elif '4' in space:
                 num_brav=4
+    elif isinstance(space,str):
+        if 'I' in space: #Body Center
+            if '3' in space: #Cube
+                num_brav=3
+            elif '4' in space: #Tetra
+                num_brav=7
+            else: #Ortho
+                num_brav=10
+        elif 'F' in space: #Face Center
+            if '3' in space: #Cube
+                num_brav=2
+            else: #Ortho
+                num_brav=9
+        elif ('R' in space): #Trigonal
+            num_brav=5
+        elif ('A' in space): #Base Center
+            pass
+        elif ('C' in space): #Base Center
+            num_brav=11
+        else: #Simple
+            if '6' in space: #Hexagonal
+                num_brav=4
+            elif '3' in space:
+                if deg[2]==90: #Cube
+                    num_brav=1
+                else: #Trigonal
+                    num_brav=4
+            elif '4' in space: #Tetra
+                num_brav=6
             elif '2' in space or 'm' in space:
                 ck=(space.count('2')+space.count('m')
                     +space.count('n')+space.count('c')
                     +space.count('a')+space.count('b'))
-                if ck==3:
+                if ck==3: #Ortho
                     num_brav=8
                 elif ck==2:
                     num_brav=8
@@ -222,22 +222,12 @@ except NameError:
             else:
                 num_brav=14
 if ibrav!=0:
-    if num_brav in {1,2,3,8,10,14}:
+    if num_brav in {1,2,3,4,5,6,7,8,10,12,13,14}:
         ibrav=num_brav
-    elif num_brav==4:
-        ibrav=6
-    elif num_brav==5:
-        ibrav=7
-    elif num_brav in {6,7}:
-        ibrav=4
     elif num_brav==9:
         ibrav=11
     elif num_brav==11:
         ibrav=10
-    elif num_brav==12:
-        ibrav=13
-    elif num_brav==13:
-        ibrav=13
 
 try: #detect k_list
     k_list
@@ -254,20 +244,20 @@ except NameError: #common k-points list
         k_list=[['G',[0.,0.,0.]],['H',[0.5,0.5,0.5]],
                 ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
                 ['G',[0.,0.,0.]]]
-    elif num_brav==4: #simple tetra
+    elif num_brav==4: #hexagonal
+        k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
+                ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
+    elif num_brav==5: #trigonal
+        k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
+                ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
+    elif num_brav==6: #simple tetra
         k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],
                 ['M',[.5,.5,0.]],['G',[0.,0.,0.]],
                 ['Z',[0.,0.,.5]]]
-    elif num_brav==5: #bct
+    elif num_brav==7: #bct
         k_list=[['G',[0.,0.,0.]],['X',[0.0,0.5,-0.5]],
                 ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
                 ['G',[0.,0.,0.]],['Z',[0.5,0.5,0.5]]]
-    elif num_brav==6: #hexagonal
-        k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
-                ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
-    elif num_brav==7: #trigonal
-        k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
-                ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
     elif num_brav==8: #simple orthogonal
         k_list=[['G',[0.,0.,0.]],['X',[0.5,0.0,0.]],
                 ['M',[0.5,0.5,0.]],['Y',[0.,0.5,0.]],
@@ -363,21 +353,21 @@ def atom_position(atom,atomic_position):
     return atom_string
 
 def get_cr_mat(num_brav,sw=T):
-    if num_brav in {1,4,8}: #Simple
+    if num_brav in {1,6,8}: #Simple
         mat=np.identity(3)
     elif num_brav in {2,9}: #Face center
         mat=np.array([[-.5, 0., .5],
                       [ 0., .5, .5],
                       [-.5, .5, 0.]])
-    elif num_brav in {3,5,10}: #Body center
+    elif num_brav in {3,7,10}: #Body center
         mat=np.array([[ .5, -.5, .5],
                       [ .5,  .5, .5],
                       [-.5, -.5, .5]])
-    elif num_brav==6: #hexa
+    elif num_brav==4: #hexa
         mat=np.array([[ 1., 0.            , 0.],
                       [-.5, .5*np.sqrt(3.), 0.],
                       [ 0., 0.            , 1.]])
-    elif num_brav==7: #trigonal
+    elif num_brav==5: #trigonal
         cg=np.cos(np.pi*deg[2]/180)
         tx=np.sqrt((1-cg)*0.5)
         ty=np.sqrt((1-cg)/6)
@@ -392,11 +382,11 @@ def get_cr_mat(num_brav,sw=T):
         mat=np.array([[ .5, .5, 0.],
                       [-.5, .5, 0.],
                       [ 0., 0., 1.]])
-    elif num_brav==12: #Base center
+    elif num_brav==12: #Monoclinic
         pass
-    elif num_brav==13: #Base center
+    elif num_brav==13: #Monoclinic
         pass
-    elif num_brav==14: #Base center
+    elif num_brav==14: #Monoclinic
         phase=np.pi*deg[0]/180.
         phase2=np.pi*deg[1]/180.
         phase3=np.pi*deg[2]/180.
