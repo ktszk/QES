@@ -2,11 +2,12 @@
 # -*- coding:utf-8 -*-
 #$ -cwd
 #$ -V -S /usr/local/Python-2.7.12/bin/python
-#$ -N Pb
+#$ -N H3S
 #$ -e out.e
 #$ -o out.o
 #$ -pe smp 40
 ##$ -pe fillup 120
+##$ -q bitra.q
 #$ -q salvia.q
 ##$ -q salvia.q@salvia1
 ##$ -q salvia.q@salvia4
@@ -18,27 +19,29 @@
 #BSUB -o std_output_file
 #BSUB -m "node_name"
 (T,F)=(True,False)                      #alias for bool numbers
-(mpi_num, kthreads_num) = (4, 0)       #number of threads for MPI/openMP
+(mpi_num, kthreads_num) = (40, 8)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
 
 (start_q, last_q)=(0, 0)
 
 #optional parameters
-aa=4.9508                               #lattice parameter a
-ab=aa                                   #lattice parameter b
-ac=aa                                   #lattice parameter c
+aa=2.984                              #lattice parameter a
+ab=aa                                 #lattice parameter b
+ac=aa                                 #lattice parameter c
 
 #======================Crystal structure===========================
-prefix='Pb'                             #material name (or job name)
-space=225                               #space group
+prefix='H3S'                            #material name (or job name)
+space=229                               #space group
 axis=[aa,ab,ac]                         #lattice parameters a,b,c
 deg=[90,90,90]                          #lattice parameters alpha,beta,gamma
-atom=['Pb']                             #elements name
-atomic_position=[[[0. ,0. ,0.]]]
+atom=['S','H']                          #elements name
+atomic_position=[[[0. ,0. ,0.]],
+                 [[0.5,0.,0.],[0.,0.5,0.],[0.,0.,0.5]]]
 #------------------------------------------------------------------
-ibrav=4                                 #brave lattice type
+ibrav=3                                 #brave lattice type
 type_xc='pbe'                           #type of exchange correlation functional
-pot_type=['%s.%s-dn-kjpaw_psl.1.0.0']   #psede potential name
+pot_type=['%s.%s-n-kjpaw_psl.1.0.0',
+          '%s.%s-kjpaw_psl.1.0.0']      #psede potential name
 
 sw_so=F                                 #activate soc and noncliner calc.
 sw_vdW=F                                #activate van der Waals interaction
@@ -48,11 +51,11 @@ sw_apw=T                                #switch of pp dir for paw( and soc) or n
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = T                              #generate input file for scf calculation
-sw_dos = F                              #generate input file for dos calc.
+sw_dos = T                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
-sw_bands = F                            #generate input file for band calc.
-sw_ph = F                               #generate input file for phonon calc.
-sw_dyn = F                              #generate input file f0r matdyn.x etc.
+sw_bands = T                            #generate input file for band calc.
+sw_ph = T                               #generate input file for phonon calc.
+sw_dyn = T                              #generate input file f0r matdyn.x etc.
 sw_epw = F                              #generate input file for epw.x 
 sw_save_dir = F                         #generate save directory for epw
 sw_wan = F                              #switch wannierization
@@ -60,22 +63,22 @@ sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
 sw_restart = T                          #switch restart tag or not
 
-sw_run = F                              #switch of execute DFT calculation or not
+sw_run = T                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
-k_mesh_scf=[8]                          #k mesh for DFT calc
+k_mesh_scf=[12]                         #k mesh for DFT calc
 k_mesh_bands=20                         #k mesh for bands calc
 k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
 (ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
 (e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
-nband=50                                #number of bands
+nband=15                                #number of bands
 nstep=500                               #max number of scf cycle's step
 dgs=0.025                               #dispersion of k-mesh
 de=0.1                                  #delta E for dos
-eband_win=[-6., 9.]                     #energy range of .ps file
-edos_win=[-0., 0.]                      #energy range of .dos file
+eband_win=[-30., 15.]                   #energy range of .ps file
+edos_win=[-30., 15.]                      #energy range of .dos file
 wf_collect=T
 #======================ph_parameters===============================
 q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
@@ -85,11 +88,11 @@ ph_conv=1.0e-14                         #threshold of energy's convergence for p
 pband_win=[0, 100]                      #energy range of .ps file
 sw_ep = T                               #swich to calc. e-p interaction or not
 #===================Wannier_parameters=============================
-nwann=6                                 #number of wannier basis
-dis_win=[-6.00, 9.00]                   #max(min)_window, range of sub space energy
+# the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
+nwann=1                                 #number of wannier basis
+dis_win=[-30.00, 30.00]                   #max(min)_window, range of sub space energy
 frz_win=[-0.0, 0.0]                     #froz_window dp22
-projection=[('Pb','p(u)')
-            ,('Pb','p(d)')]             #projections, initial funcution of wannier
+projection=[('H','s')]               #projections, initial funcution of wannier
 sw_fs_plot= F                           #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk=F                                   #Bloch(Wannier)_func
@@ -241,9 +244,8 @@ except NameError: #common k-points list
                 ['G',[1.0,0.,0.]],['L',[0.5,0.5,0.5]],
                 ['W',[0.5,0.25,0.75]],['G',[0.,0.,0.]]]
     elif num_brav==3: #bcc
-        k_list=[['G',[0.,0.,0.]],['H',[0.5,0.5,0.5]],
-                ['P',[0.25,0.75,-0.25]],['N',[0.,0.5,0.]],
-                ['G',[0.,0.,0.]]]
+        k_list=[['G',[0.,0.,0.]],['H',[0.5,0.5,0.5]],['N',[0.,0.5,0.]],
+                ['P',[0.25,0.75,-0.25]],['G',[0.,0.,0.]],['N',[0.,0.5,0.]]]
     elif num_brav==4: #hexagonal
         k_list=[['G',[0.,0.,0.]],['K',[2./3,-1./3,0.]],
                 ['M',[.5,0.,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
@@ -475,7 +477,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
     return k_string
 
 #---------------------input file generators-------------------------------
-def make_pw_in(calc):
+def make_pw_in(calc,kconfig):
     def atomic_parameters_stream(atom,atomic_position,UPF):
         atom_string='\nATOMIC_SPECIES\n'
         for at,up in zip(atom,UPF):
@@ -574,8 +576,8 @@ def make_pw_in(calc):
         fs_cellparam='CELL_PARAMETERS\n'+cell_parameter_stream(axis,deg)+'\n'
         fstream=fstream+fs_cellparam
 
-    fstream=fstream+'K_POINTS (%s)\n'%('crystal' if calc in {'nscf', 'bands'} else 'automatic')
-    if calc in {'nscf', 'bands'}:
+    fstream=fstream+'K_POINTS (%s)\n'%('crystal' if kconfig else 'automatic')
+    if kconfig:
         if calc=='nscf':
             fs_kl_param=k_cube_stream(k_mesh_wannier,T,F)
         else:
@@ -831,14 +833,14 @@ def main(prefix):
         name='%s.%s'%(prefix,exe)
         return '<%s>%s.out'%tuple([name]*2)
     if sw_scf: #calculate scf cycle
-        make_pw_in('scf') #make pw.x's input file for scf
+        make_pw_in('scf',False) #make pw.x's input file for scf
         if sw_vdW and vdW_corr=='vdW-DF' and (not os.path.isfile('vdW_kernel_table')):
             os_and_print(mpiexe+'generate_vdW_kernel_table.x ')
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
             date()
     if sw_dos:
-        make_pw_in('nscf') #make pw.x's input file for nscf
+        make_pw_in('nscf',False) #make pw.x's input file for nscf
         if sw_prj:
             make_prjwfc_in()
         else:
@@ -851,7 +853,7 @@ def main(prefix):
                 os_and_print(mpiexe+'dos.x '+npool+os_io(prefix,'dos_in'))
             date()
     if sw_bands: #calculate band structure
-        make_pw_in('bands') #make pw.x's input file for bands
+        make_pw_in('bands',True) #make pw.x's input file for bands
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'bands'))
             date()
@@ -863,7 +865,7 @@ def main(prefix):
             os_and_print('plotband.x '+os_io('eband','plotband'))
     if sw_wan: #wannierize
         if sw_wan_init_nscf: #calculate energy of all k-points for wannier90
-            make_pw_in('nscf') #make pw.x's input file for nscf
+            make_pw_in('nscf',True) #make pw.x's input file for nscf
             if sw_run:
                 os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
                 date()
