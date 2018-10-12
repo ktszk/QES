@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+### options for GE job maneger
 #$ -cwd
 #$ -V -S /usr/local/Python-2.7.12/bin/python
 #$ -N H3S
@@ -9,10 +10,8 @@
 ##$ -pe fillup 120
 ##$ -q bitra.q
 #$ -q salvia.q
-##$ -q salvia.q@salvia1
-##$ -q salvia.q@salvia4
-##$ -q salvia.q@salvia5
 ##$ -q lantana.q
+### options for LSF job manager
 #BSUB -q "queue_name"
 #BSUB -n 16
 #BSUB -J "Job name"
@@ -29,11 +28,13 @@ aa=2.984                              #lattice parameter a
 ab=aa                                 #lattice parameter b
 ac=aa                                 #lattice parameter c
 
+alpha=90.
+beta=90.
+gamma=90.
+
 #======================Crystal structure===========================
 prefix='H3S'                            #material name (or job name)
 space=229                               #space group
-axis=[aa,ab,ac]                         #lattice parameters a,b,c
-deg=[90,90,90]                          #lattice parameters alpha,beta,gamma
 atom=['S','H']                          #elements name
 atomic_position=[[[0. ,0. ,0.]],
                  [[0.5,0.,0.],[0.,0.5,0.],[0.,0.,0.5]]]
@@ -51,11 +52,11 @@ sw_apw=T                                #switch of pp dir for paw( and soc) or n
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = T                              #generate input file for scf calculation
-sw_dos = T                              #generate input file for dos calc.
+sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
-sw_bands = T                            #generate input file for band calc.
+sw_bands = F                            #generate input file for band calc.
 sw_ph = T                               #generate input file for phonon calc.
-sw_dyn = T                              #generate input file f0r matdyn.x etc.
+sw_dyn = F                              #generate input file f0r matdyn.x etc.
 sw_epw = F                              #generate input file for epw.x 
 sw_save_dir = F                         #generate save directory for epw
 sw_wan = F                              #switch wannierization
@@ -63,11 +64,11 @@ sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
 sw_restart = T                          #switch restart tag or not
 
-sw_run = T                              #switch of execute DFT calculation or not
+sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
-k_mesh_scf=[12]                         #k mesh for DFT calc
+k_mesh_scf=[16]                         #k mesh for DFT calc
 k_mesh_bands=20                         #k mesh for bands calc
 k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
 (ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
@@ -78,15 +79,17 @@ nstep=500                               #max number of scf cycle's step
 dgs=0.025                               #dispersion of k-mesh
 de=0.1                                  #delta E for dos
 eband_win=[-30., 15.]                   #energy range of .ps file
-edos_win=[-30., 15.]                      #energy range of .dos file
+edos_win=[-30., 15.]                    #energy range of .dos file
 wf_collect=T
 #======================ph_parameters===============================
 q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
 q_mesh_dos=8                            #q mesh for phonon dos calc
 ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
-pband_win=[0, 100]                      #energy range of .ps file
+pband_win=[0, 2000]                     #energy range of .ps file
 sw_ep = T                               #swich to calc. e-p interaction or not
+qnum=10                                 #number of irreducible q points
+sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
 nwann=1                                 #number of wannier basis
@@ -123,6 +126,8 @@ mass={'H':1.00794,                                                              
       'Hg':200.59,'Tl':204.3833,'Pb':207.2,'Bi':208.98038,
       'Th':232.0381,'Pa':231.03588,'U':238.02891}
 #==========================global_variables========================
+axis=[aa,ab,ac]                         #lattice parameters a,b,c
+deg=[alpha,beta,gamma]                  #lattice parameters alpha,beta,gamma
 axis=np.array(axis)
 fildvscf="'dvscf'"
 fildyn='%s.dyn'%prefix
@@ -142,6 +147,11 @@ else:
     pseude_dir='/home/Apps/upf_files/'
     txc=type_xc
 UPF=[pp%(at,txc)+'.UPF' for pp, at in zip(pot_type,atom)]
+
+try:
+    edos_win
+except NameError:
+    edos_win=eband_win
 
 try: #detect brav
     num_brav
@@ -489,6 +499,9 @@ def make_pw_in(calc,kconfig):
 
     (fext,convthr) =(('nscf' if calc=='nscf' else 'bands',nscf_conv) 
                      if calc in ['nscf','bands'] else ('scf',scf_conv))
+    #occup=("'tetrahedra_opt'" if (calc=='nscf' and not kconfig) else "'smearing'")
+    occup="'tetrahedra_opt'"
+
     fname='%s.%s'%(prefix,fext)
     fstream=''
     var_control=['title','calculation','restart_mode','outdir','pseudo_dir',
@@ -501,7 +514,7 @@ def make_pw_in(calc,kconfig):
     fstream=fstream+fs_control
 
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
-                'ntyp':len(atom),'occupations':"'smearing'",'smearing':"'marzari-vanderbilt'",
+                'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'ecutrho':ec_rho,
                 'noncolin':'.True.','lspinorb':'.True.','vdw_corr':"'%s'"%vdW_corr}
     var_system=['ibrav','nat','ntyp','occupations','smearing','degauss',
@@ -530,23 +543,23 @@ def make_pw_in(calc,kconfig):
         """
         var_system=var_system+['celldm(1)'] 
         val_system.update({'celldm(1)':axis[0]*ibohr})
-        if ibrav in {4,6,7,8,9,10,11,12,13,14}:
-            var_system=var_system+['celldm(3)']
-            val_system.update({'celldm(3)':axis[2]/axis[0]})
-            if ibrav in range(8,14)+[-12]:
+        if ibrav in {4,6,7,8,9,10,11,12,13,14,-12,-13}:
+            if ibrav in {8,9,10,11,12,13,14,-12}:
                 var_system=var_system+['celldm(2)']
                 val_system.update({'celldm(2)':axis[1]/axis[0]})
-                if ibrav in (12,13):
-                    var_system=var_system+['celldm(4)']
-                    val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.)})
-                elif ibrav==-12:
-                    var_system=var_system+['celldm(5)']
-                    val_system.update({'celldm(5)':np.cos(np.pi*deg[1]/180.)})
-                elif ibrav==14:
-                    var_system=var_system+['celldm(4)','celldm(5)','celldm(6)']
-                    val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.),
-                                       'celldm(5)':np.cos(np.pi*deg[1]/180.),
-                                       'celldm(6)':np.cos(np.pi*deg[0]/180.)})
+            var_system=var_system+['celldm(3)']
+            val_system.update({'celldm(3)':axis[2]/axis[0]})
+            if ibrav in {12,13}:
+                var_system=var_system+['celldm(4)']
+                val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.)})
+            elif ibrav in {-12,-13}:
+                var_system=var_system+['celldm(5)']
+                val_system.update({'celldm(5)':np.cos(np.pi*deg[1]/180.)})
+            elif ibrav==14:
+                var_system=var_system+['celldm(4)','celldm(5)','celldm(6)']
+                val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.),
+                                   'celldm(5)':np.cos(np.pi*deg[1]/180.),
+                                   'celldm(6)':np.cos(np.pi*deg[0]/180.)})
         elif ibrav in (5,-5):
             var_system=var_system+['celldm(4)']
             val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.)})
@@ -601,9 +614,10 @@ def make_pw_in(calc,kconfig):
 def make_dos_in():
     fname='%s.dos_in'%prefix
     fildos='%s.dos'%prefix
+    ef=get_ef(prefix,'scf')
     var_dos=['prefix','outdir','Emin','Emax','DeltaE','ngauss','degauss','fildos']
     val_dos={'prefix':"'%s'"%prefix,'outdir':"'%s'"%outdir,'fildos':"'%s'"%fildos,
-               'Emin':edos_win[0],'Emax':edos_win[1],'DeltaE':de,'ngauss':1,'degauss':dgs}
+               'Emin':edos_win[0]+ef,'Emax':edos_win[1]+ef,'DeltaE':de,'ngauss':1,'degauss':2*dgs}
     fstream=''
     fs_dos=make_fstring_obj('dos',var_dos,val_dos,'dos')
     fstream=fstream+fs_dos
@@ -719,6 +733,9 @@ def make_win():
 def make_ph_in():
     fname='%s.ph'%prefix
     fstream='%s\n'%prefix
+    ep_setting="'interpolated'"
+    #ep_setting="'lambda_tetra'" #calc e-p int. using opt_tetrahedra
+
     var_inputph=['tr2_ph','prefix','fildyn','trans','ldisp','lqdir','recover',
                  'outdir']
     if ithreads_num==0:
@@ -732,7 +749,7 @@ def make_ph_in():
     var_inputph=var_inputph+['nq1','nq2','nq3']
     val_inputph={'tr2_ph':w_conv(ph_conv),'prefix':"'%s'"%prefix,'fildyn':"'%s'"%fildyn,'fildvscf':fildvscf,
                  'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','lqdir':'.True.','recover':recover,
-                 'electron_phonon':"'interpolated'",'start_q':start_q,'last_q':last_q,
+                 'electron_phonon':ep_setting,'start_q':start_q,'last_q':last_q,
                  'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
     fs_inputph=make_fstring_obj('inputph',var_inputph,val_inputph,'ph')
     fstream=fstream+fs_inputph
@@ -897,6 +914,17 @@ def main(prefix):
         if sw_run:
             os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'matdyn'))
             date()
+            if sw_gen_a2f: #create a2F.dos.dat files for plotting
+                for i in range(qnum):
+                    fname='a2F.dos%s'%(i+1)
+                    tmp1=[f for f in open(fname,'r')]
+                    tmp=tmp1[5:-1]
+                    tmp1=[t1.strip()+t2 for t1,t2 in zip(tmp,tmp[1:])]
+                    tmp=tmp1[::2]
+                    f=open(fname+'.dat','w')
+                    for i in tmp:
+                        f.write(i)
+                    f.close()
         make_matdyn(True) #make input file for matdyn.x (for phonon dispersion calculation)
         if sw_run:
             os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'freq'))
