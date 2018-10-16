@@ -159,26 +159,29 @@ except NameError:
     if isinstance(space,int):
         if space in {23,24,44,45,46,71,72,73,74,79,80,82,87,88,
                      97,98,107,108,109,110,119,120,121,122,139,
-                     140,141,142,197,199,204,206,211,214,217,220,229,230}: #I
+                     140,141,142,197,199,204,206,211,214,217,220,229,230}: #I (Body Center)
             if space >195: #BCC
                 num_brav=3
             elif space>75: #BCT
                 num_brav=7
             else: #BCO
                 num_brav=10
-        elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}: #F
+        elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}: #F (Face Center)
             if space >195: #FCC
                 num_brav=2
             else: #FCO
                 num_brav=9
-        elif space in {146,148,155,160,161,166,167}: #trigonal
+        elif space in {146,148,155,160,161,166,167}: #R (trigonal(rhombohedral))
             num_brav=5
-        elif space in {38,39,40,41,5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}: #ABC
+        elif space in {38,39,40,41,5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}: #ABC (Base Center)
             if space >16: #Ortho
                 num_brav=11
             else: #monocli
-                num_brav=12
-        else: #P
+                if deg[2]!=90.:
+                    num_brav=13
+                elif deg[1]!=90.:
+                    num_brav=-13
+        else: #P (Simple)
             if space >194: #SC
                 num_brav=1
             elif space>75: #ST
@@ -188,7 +191,10 @@ except NameError:
             elif space>15: #SO
                 num_brav=8
             elif space>2: #monocli
-                num_brav=13
+                if deg[2]!=90.:
+                    num_brav=12
+                elif deg[1]!=90.:
+                    num_brav=-12
             else:
                 num_brav=14
             if space in range(168,195): #168>194 is Hexagonal
@@ -235,7 +241,7 @@ except NameError:
             else:
                 num_brav=14
 if ibrav!=0:
-    if num_brav in {1,2,3,4,5,6,7,8,10,12,13,14}:
+    if num_brav in {1,2,3,4,5,6,7,8,10,12,13,14,-12,-13}:
         ibrav=num_brav
     elif num_brav==9:
         ibrav=11
@@ -376,9 +382,12 @@ def get_cr_mat(num_brav,sw=T):
                       [ .5,  .5, .5],
                       [-.5, -.5, .5]])
     elif num_brav==4: #hexa
-        mat=np.array([[ 1., 0.            , 0.],
-                      [-.5, .5*np.sqrt(3.), 0.],
-                      [ 0., 0.            , 1.]])
+        if sw:
+            mat=np.array([[ 1., 0.            , 0.],
+                          [-.5, .5*np.sqrt(3.), 0.],
+                          [ 0., 0.            , 1.]])
+        else:
+            mat=np.identity(3)
     elif num_brav==5: #trigonal
         cg=np.cos(np.pi*deg[2]/180)
         tx=np.sqrt((1-cg)*0.5)
