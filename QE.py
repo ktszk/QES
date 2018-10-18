@@ -71,7 +71,8 @@ sw_bsub = F                             #switch bsub
 k_mesh_scf=[16]                         #k mesh for DFT calc
 k_mesh_bands=20                         #k mesh for bands calc
 k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
-(ecut, ec_rho)=(60.0, 800)              #cut off energy of pw and density
+ecut=60.0                               #cut off energy of pw basis
+#ec_rho=800                              #cut off energy of density
 (e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
 nband=15                                #number of bands
@@ -79,7 +80,7 @@ nstep=500                               #max number of scf cycle's step
 dgs=0.025                               #dispersion of k-mesh
 de=0.1                                  #delta E for dos
 eband_win=[-30., 15.]                   #energy range of .ps file
-edos_win=[-30., 15.]                    #energy range of .dos file
+#edos_win=[-30., 15.]                    #energy range of .dos file
 wf_collect=T
 #======================ph_parameters===============================
 q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
@@ -508,8 +509,7 @@ def make_pw_in(calc,kconfig):
 
     (fext,convthr) =(('nscf' if calc=='nscf' else 'bands',nscf_conv) 
                      if calc in ['nscf','bands'] else ('scf',scf_conv))
-    #occup=("'tetrahedra_opt'" if (calc=='nscf' and not kconfig) else "'smearing'")
-    occup="'tetrahedra_opt'"
+    occup=("'smearing'" if kconfig else "'tetrahedra_opt'")
 
     fname='%s.%s'%(prefix,fext)
     fstream=''
@@ -522,12 +522,19 @@ def make_pw_in(calc,kconfig):
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream=fstream+fs_control
 
+
+    var_system=['ibrav','nat','ntyp','occupations','smearing','degauss',
+                'la2f','nbnd','ecutwfc']
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
-                'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'ecutrho':ec_rho,
+                'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,
                 'noncolin':'.True.','lspinorb':'.True.','vdw_corr':"'%s'"%vdW_corr}
-    var_system=['ibrav','nat','ntyp','occupations','smearing','degauss',
-                'la2f','nbnd','ecutwfc','ecutrho']
+    try:
+        ec_rho
+        var_system=var_system+['ecutrho']
+        val_system.update({'ecutrho':ec_rho})
+    except NameError:
+        pass
     if sw_so:
         var_system=var_system+['noncolin','lspinorb']
     if sw_vdW:
@@ -598,7 +605,7 @@ def make_pw_in(calc,kconfig):
         fs_cellparam='CELL_PARAMETERS\n'+cell_parameter_stream(axis,deg)+'\n'
         fstream=fstream+fs_cellparam
 
-    fstream=fstream+'K_POINTS (%s)\n'%('crystal' if kconfig else 'automatic')
+    fstream=fstream+'K_POINTS %s\n'%('(crystal)' if kconfig else 'AUTOMATIC')
     if kconfig:
         if calc=='nscf':
             fs_kl_param=k_cube_stream(k_mesh_wannier,T,F)
@@ -799,7 +806,7 @@ def make_matdyn(phband):
     if phband:
         mat=get_cr_mat(num_brav)
         avec=mat*axis
-        alat=np.sqrt(sum(avec[0]**2))
+        alat=(np.sqrt(sum(avec[0]**2)) if ibrav==0 else axis[0])
         q_list=[[kl[0],list(np.linalg.inv(mat*axis/alat).dot(kl[1]))] for kl in k_list]
         fs_qlist=k_line_stream(q_mesh_bands,q_list)
         fstream=fstream+fs_qlist
@@ -876,7 +883,7 @@ def main(prefix):
             if sw_prj:
                 os_and_print(mpiexe+'projwfc.x '+npool+os_io(prefix,'prjwfc'))
             else:
-                os_and_print(mpiexe+'dos.x '+npool+os_io(prefix,'dos_in'))
+                os_and_print('dos.x '+os_io(prefix,'dos_in'))
             date()
     if sw_bands: #calculate band structure
         make_pw_in('bands',True) #make pw.x's input file for bands
