@@ -24,13 +24,13 @@ ithreads_num = 0                        #number of image for ph.x
 (start_q, last_q)=(0, 0)
 
 #optional parameters
-aa=2.984                              #lattice parameter a
-ab=aa                                 #lattice parameter b
-ac=aa                                 #lattice parameter c
+aa=2.984                                #lattice parameter a
+ab=aa                                   #lattice parameter b
+ac=aa                                   #lattice parameter c
 
-alpha=90.
-beta=90.
-gamma=90.
+alpha=90.                               #lattice angle α
+beta=90.                                #lattice angle β
+gamma=90.                               #lattice angle γ
 
 #======================Crystal structure===========================
 prefix='H3S'                            #material name (or job name)
@@ -46,7 +46,7 @@ pot_type=['%s.%s-n-kjpaw_psl.1.0.0',
 
 sw_so=F                                 #activate soc and noncliner calc.
 sw_vdW=F                                #activate van der Waals interaction
-vdW_corr='vdW-DF'                        #set van der Waals type
+vdW_corr='vdW-DF'                       #set van der Waals type
 #====================directorys settings===========================
 sw_apw=T                                #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
@@ -82,11 +82,14 @@ de=0.1                                  #delta E for dos
 eband_win=[-30., 15.]                   #energy range of .ps file
 #edos_win=[-30., 15.]                    #energy range of .dos file
 wf_collect=T
+sw_nosym=T                              #no symmetry and no inversion
 #======================ph_parameters===============================
 q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
 q_mesh_dos=8                            #q mesh for phonon dos calc
 ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
+amix=0.7                                #mixing rate for ph scf default=0.7
+maxiter_ph= 100                         #max iteration default=100
 pband_win=[0, 2000]                     #energy range of .ps file
 sw_ep = T                               #swich to calc. e-p interaction or not
 qnum=10                                 #number of irreducible q points
@@ -94,9 +97,9 @@ sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
 nwann=1                                 #number of wannier basis
-dis_win=[-30.00, 30.00]                   #max(min)_window, range of sub space energy
+dis_win=[-30.00, 30.00]                 #max(min)_window, range of sub space energy
 frz_win=[-0.0, 0.0]                     #froz_window dp22
-projection=[('H','s')]               #projections, initial funcution of wannier
+projection=[('H','s')]                  #projections, initial funcution of wannier
 sw_fs_plot= F                           #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk=F                                   #Bloch(Wannier)_func
@@ -108,7 +111,8 @@ import os, datetime
 TorF=lambda x:'.True.' if x else '.False.'
 w_conv=lambda a:'1.0E%d'%int(np.log10(a))
 #====================== physical parameters =======================
-bohr=round(0.52917721067, 6)            #Bohr Radius
+sig_fig = 9                             #significant figure after decimal fraction
+bohr=round(0.52917721067, sig_fig)       #Bohr Radius
 ibohr=1.0/bohr                          #inverse of Bohr Radius
 #========================= atomic mass ============================
 mass={'H':1.00794,                                                                            'He':4.002602,
@@ -185,10 +189,10 @@ except NameError:
         else: #P (Simple)
             if space >194: #SC
                 num_brav=1
+            elif space>142: #Trigonal or Hexagonal
+                num_brav=4
             elif space>75: #ST
                 num_brav=6
-            elif space>74: #Trigonal
-                num_brav=4
             elif space>15: #SO
                 num_brav=8
             elif space>2: #monocli
@@ -198,8 +202,6 @@ except NameError:
                     num_brav=-12
             else:
                 num_brav=14
-            if space in range(168,195): #168>194 is Hexagonal
-                num_brav=4
     elif isinstance(space,str):
         if 'I' in space: #Body Center
             if '3' in space: #Cube
@@ -455,7 +457,7 @@ def k_line_stream(k_num,k_list):
     return k_string
 
 def k_cube_stream(k_num,w_sw,sw_wan):
-    wfunc=lambda x,y,z:'\n' if x else ' %f\n'%(1./z if y else 1.)
+    wfunc=lambda x,y,z:'\n' if x else '  %10.8f\n'%(1./z if y else 1.)
     if not isinstance(w_sw,bool):
         w_sw=False
     if isinstance(k_num,int):
@@ -465,7 +467,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
         for i in range(k_num):
             for j in range(k_num):
                 for k in range(k_num):
-                    k_string=k_string+'%f %f %f'%(dk*i,dk*j,dk*k)+wst
+                    k_string=k_string+'  %10.8f  %10.8f  %10.8f'%(dk*i,dk*j,dk*k)+wst
     elif isinstance(k_num,list):
         if len(k_num)==1:
             dk=[1./knum[0]]*3
@@ -489,7 +491,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
         for i in range(kn[0]):
             for j in range(kn[1]):
                 for k in range(kn[2]):
-                    k_string=k_string+'%f %f %f'%(dk[0]*i,dk[1]*j,dk[2]*k)+wst
+                    k_string=k_string+'  %10.8f  %10.8f  %10.8f'%(dk[0]*i,dk[1]*j,dk[2]*k)+wst
     else:
         print('Please input list or int into k_point ')
         exit()
@@ -518,17 +520,20 @@ def make_pw_in(calc,kconfig):
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':w_conv(e_conv),
                  'forc_conv_thr':w_conv(f_conv),'nstep':nstep,'tstress':'.True.','tprnfor':'.True.',
-                 'wf_collect':TorF(wf_collect)}
+                 'wf_collect':TorF(wf_collect),'verbosity':'high'}
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream=fstream+fs_control
 
 
     var_system=['ibrav','nat','ntyp','occupations','smearing','degauss',
                 'la2f','nbnd','ecutwfc']
+    if(sw_nosym):
+        var_system=var_system+['nosym','noinv']
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
-                'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,
-                'noncolin':'.True.','lspinorb':'.True.','vdw_corr':"'%s'"%vdW_corr}
+                'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
+                'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.',
+                'vdw_corr':"'%s'"%vdW_corr}
     try:
         ec_rho
         var_system=var_system+['ecutrho']
@@ -558,27 +563,27 @@ def make_pw_in(calc,kconfig):
               = 14: Triclinic
         """
         var_system=var_system+['celldm(1)'] 
-        val_system.update({'celldm(1)':axis[0]*ibohr})
+        val_system.update({'celldm(1)':round(axis[0]*ibohr,sig_fig)})
         if ibrav in {4,6,7,8,9,10,11,12,13,14,-12,-13}:
             if ibrav in {8,9,10,11,12,13,14,-12}:
                 var_system=var_system+['celldm(2)']
-                val_system.update({'celldm(2)':axis[1]/axis[0]})
+                val_system.update({'celldm(2)':round(axis[1]/axis[0],sig_fig)})
             var_system=var_system+['celldm(3)']
-            val_system.update({'celldm(3)':axis[2]/axis[0]})
+            val_system.update({'celldm(3)':round(axis[2]/axis[0],sig_fig)})
             if ibrav in {12,13}:
                 var_system=var_system+['celldm(4)']
-                val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.)})
+                val_system.update({'celldm(4)':round(np.cos(np.pi*deg[2]/180.),sig_fig)})
             elif ibrav in {-12,-13}:
                 var_system=var_system+['celldm(5)']
-                val_system.update({'celldm(5)':np.cos(np.pi*deg[1]/180.)})
+                val_system.update({'celldm(5)':round(np.cos(np.pi*deg[1]/180.),sig_fig)})
             elif ibrav==14:
                 var_system=var_system+['celldm(4)','celldm(5)','celldm(6)']
-                val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.),
-                                   'celldm(5)':np.cos(np.pi*deg[1]/180.),
-                                   'celldm(6)':np.cos(np.pi*deg[0]/180.)})
+                val_system.update({'celldm(4)':round(np.cos(np.pi*deg[2]/180.),sig_fig),
+                                   'celldm(5)':round(np.cos(np.pi*deg[1]/180.),sig_fig),
+                                   'celldm(6)':round(np.cos(np.pi*deg[0]/180.),sig_fig)})
         elif ibrav in (5,-5):
             var_system=var_system+['celldm(4)']
-            val_system.update({'celldm(4)':np.cos(np.pi*deg[2]/180.)})
+            val_system.update({'celldm(4)':round(np.cos(np.pi*deg[2]/180.),sig_fig)})
     fs_system=make_fstring_obj('system',var_system,val_system,'pw')
     fstream=fstream+fs_system
 
@@ -605,7 +610,7 @@ def make_pw_in(calc,kconfig):
         fs_cellparam='CELL_PARAMETERS\n'+cell_parameter_stream(axis,deg)+'\n'
         fstream=fstream+fs_cellparam
 
-    fstream=fstream+'K_POINTS %s\n'%('(crystal)' if kconfig else 'AUTOMATIC')
+    fstream=fstream+'K_POINTS %s\n'%('CRYSTAL' if kconfig else 'AUTOMATIC')
     if kconfig:
         if calc=='nscf':
             fs_kl_param=k_cube_stream(k_mesh_wannier,T,F)
@@ -752,8 +757,8 @@ def make_ph_in():
     ep_setting="'interpolated'"
     #ep_setting="'lambda_tetra'" #calc e-p int. using opt_tetrahedra
 
-    var_inputph=['tr2_ph','prefix','fildyn','trans','ldisp','lqdir','recover',
-                 'outdir']
+    var_inputph=['tr2_ph','alpha_mix','niter_ph','prefix','fildyn','trans',
+                 'ldisp','lqdir','recover','outdir']
     if ithreads_num==0:
         var_inputph=var_inputph+['fildvscf']
     if sw_ep:
@@ -765,8 +770,8 @@ def make_ph_in():
     var_inputph=var_inputph+['nq1','nq2','nq3']
     val_inputph={'tr2_ph':w_conv(ph_conv),'prefix':"'%s'"%prefix,'fildyn':"'%s'"%fildyn,'fildvscf':fildvscf,
                  'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','lqdir':'.True.','recover':recover,
-                 'electron_phonon':ep_setting,'start_q':start_q,'last_q':last_q,
-                 'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
+                 'electron_phonon':ep_setting,'alpha_mix':amix,'niter_ph':maxiter_ph,
+                 'start_q':start_q,'last_q':last_q,'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
     fs_inputph=make_fstring_obj('inputph',var_inputph,val_inputph,'ph')
     fstream=fstream+fs_inputph
     write_file(fname,fstream)
@@ -949,10 +954,10 @@ def main(prefix):
             os_and_print('plotband.x '+os_io('pband','plotband'))
     if sw_save_dir:
         import shutil
-        for f in open('%s.ph.out'%prefix):
-            if (f.find('q-points):')!=-1):
-                nq=int(f.strip().split()[1].split('q')[0])
-                break
+        f=open('%s.dyn0'%prefix)
+        f.readline()
+        nq=int(f.readline())
+        f.close()
         if not os.path.isdir('save'):
             os.mkdir('save')
         if not os.path.isdir('save/'+prefix+'.phsave'):
