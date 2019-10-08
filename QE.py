@@ -11,6 +11,12 @@
 ##$ -q bitra.q
 #$ -q salvia.q
 ##$ -q lantana.q
+### options for PJM job manager
+#PJM -L "rscunit=ito-a"
+#PJM -L "rscgrp=ito-ss"
+#PJM -L "vnode=1"
+#PJM -L "vnode-core=36"
+#PJM -L "elapse=96:00:00"
 ### options for LSF job manager
 #BSUB -q "queue_name"
 #BSUB -n 16
@@ -18,7 +24,7 @@
 #BSUB -o std_output_file
 #BSUB -m "node_name"
 (T,F)=(True,False)                      #alias for bool numbers
-(mpi_num, kthreads_num) = (40, 8)       #number of threads for MPI/openMP
+(mpi_num, kthreads_num) = (36, 6)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
 
 (start_q, last_q)=(0, 0)
@@ -30,16 +36,16 @@ ac=aa                                   #lattice parameter c
 
 alpha=90.                               #lattice angle α
 beta=90.                                #lattice angle β
-gamma=90.                               #lattice angle γ
+gamma=90.                              #lattice angle γ
 
 #======================Crystal structure===========================
 prefix='H3S'                            #material name (or job name)
 space=229                               #space group
-atom=['S','H']                          #elements name
-atomic_position=[[[0. ,0. ,0.]],
-                 [[0.5,0.,0.],[0.,0.5,0.],[0.,0.,0.5]]]
+atom=['S','H']                    #elements name
+atomic_position=[[[0., 0., 0.]],
+                 [[.5, 0., 0.],[0., .5, 0.],[0., 0., .5]]]
 #------------------------------------------------------------------
-ibrav=3                                 #brave lattice type
+ibrav=3                                 #brave lattice type  
 type_xc='pbe'                           #type of exchange correlation functional
 pot_type=['%s.%s-n-kjpaw_psl.1.0.0',
           '%s.%s-kjpaw_psl.1.0.0']      #psede potential name
@@ -51,19 +57,19 @@ vdW_corr='vdW-DF'                       #set van der Waals type
 sw_apw=T                                #switch of pp dir for paw( and soc) or not
 outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = T                              #generate input file for scf calculation
+sw_scf = F                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
-sw_ph = T                               #generate input file for phonon calc.
+sw_ph = F                               #generate input file for phonon calc.
 sw_dyn = F                              #generate input file f0r matdyn.x etc.
 sw_epw = F                              #generate input file for epw.x 
 sw_save_dir = F                         #generate save directory for epw
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
-sw_restart = T                          #switch restart tag or not
-
+sw_restart = F                          #switch restart tag or not
+sw_opt = F                              #switch optimization
 sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
@@ -82,7 +88,7 @@ de=0.1                                  #delta E for dos
 eband_win=[-30., 15.]                   #energy range of .ps file
 #edos_win=[-30., 15.]                    #energy range of .dos file
 wf_collect=T
-sw_nosym=T                              #no symmetry and no inversion
+sw_nosym=F                              #no symmetry and no inversion
 #======================ph_parameters===============================
 q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
 q_mesh_bands=20                         #q mesh for phonon band calc
@@ -147,7 +153,7 @@ except NameError:
     type_xc='pbe'
 if sw_so or sw_apw:
     txc='rel-'+type_xc if sw_so else type_xc
-    pseude_dir='/home/Apps/UPF/%s/'%txc 
+    pseude_dir='/home/Apps/UPF/%s/'%txc
 else:
     pseude_dir='/home/Apps/upf_files/'
     txc=type_xc
@@ -870,109 +876,114 @@ def main(prefix):
     def os_io(prefix,exe):
         name='%s.%s'%(prefix,exe)
         return '<%s>%s.out'%tuple([name]*2)
-    if sw_scf: #calculate scf cycle
-        make_pw_in('scf',False) #make pw.x's input file for scf
-        if sw_vdW and vdW_corr=='vdW-DF' and (not os.path.isfile('vdW_kernel_table')):
-            os_and_print(mpiexe+'generate_vdW_kernel_table.x ')
+    if sw_opt: #optimaization
+        make_pw_in('vc-relax',False) #make pw.x's input file for scf
         if sw_run:
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
             date()
-    if sw_dos:
-        make_pw_in('nscf',False) #make pw.x's input file for nscf
-        if sw_prj:
-            make_prjwfc_in()
-        else:
-            make_dos_in()
-        if sw_run:
-            os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
+    else:
+        if sw_scf: #calculate scf cycle
+            make_pw_in('scf',False) #make pw.x's input file for scf
+            if sw_vdW and vdW_corr=='vdW-DF' and (not os.path.isfile('vdW_kernel_table')):
+                os_and_print(mpiexe+'generate_vdW_kernel_table.x ')
+            if sw_run:
+                os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
+                date()
+        if sw_dos:
+            make_pw_in('nscf',False) #make pw.x's input file for nscf
             if sw_prj:
-                os_and_print(mpiexe+'projwfc.x '+npool+os_io(prefix,'prjwfc'))
+                make_prjwfc_in()
             else:
-                os_and_print('dos.x '+os_io(prefix,'dos_in'))
-            date()
-    if sw_bands: #calculate band structure
-        make_pw_in('bands',True) #make pw.x's input file for bands
-        if sw_run:
-            os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'bands'))
-            date()
-        make_bands_in() #make input file for bands.x
-        if sw_run:
-            os_and_print('bands.x '+os_io(prefix,'bands_in'))
-        make_plotband_in(True,eband_win) #make input file for plotband.x
-        if sw_run:
-            os_and_print('plotband.x '+os_io('eband','plotband'))
-    if sw_wan: #wannierize
-        if sw_wan_init_nscf: #calculate energy of all k-points for wannier90
-            make_pw_in('nscf',True) #make pw.x's input file for nscf
+                make_dos_in()
             if sw_run:
                 os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
+                if sw_prj:
+                    os_and_print(mpiexe+'projwfc.x '+npool+os_io(prefix,'prjwfc'))
+                else:
+                    os_and_print('dos.x '+os_io(prefix,'dos_in'))
                 date()
-        if sw_wan_init: #execute wannier90.x with initial settings
-            make_win() #make input file for wannier90 (and pw2wan)
+        if sw_bands: #calculate band structure
+            make_pw_in('bands',True) #make pw.x's input file for bands
             if sw_run:
-                os_and_print('%s -pp %s'%(wan_exe,prefix))
-            make_pw2wan_in()
+                os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'bands'))
+                date()
+            make_bands_in() #make input file for bands.x
             if sw_run:
-                os_and_print(mpiexe+'pw2wannier90.x '+os_io(prefix,'pw2wan'))
+                os_and_print('bands.x '+os_io(prefix,'bands_in'))
+            make_plotband_in(True,eband_win) #make input file for plotband.x
+            if sw_run:
+                os_and_print('plotband.x '+os_io('eband','plotband'))
+        if sw_wan: #wannierize
+            if sw_wan_init_nscf: #calculate energy of all k-points for wannier90
+                make_pw_in('nscf',True) #make pw.x's input file for nscf
+                if sw_run:
+                    os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
+                    date()
+            if sw_wan_init: #execute wannier90.x with initial settings
+                make_win() #make input file for wannier90 (and pw2wan)
+                if sw_run:
+                    os_and_print('%s -pp %s'%(wan_exe,prefix))
+                make_pw2wan_in()
+                if sw_run:
+                    os_and_print(mpiexe+'pw2wannier90.x '+os_io(prefix,'pw2wan'))
+                    os_and_print('%s %s'%(wan_exe,prefix))
+                    date()
+            else: #execute only wannier90
+                make_win()
                 os_and_print('%s %s'%(wan_exe,prefix))
+        if sw_ph: #calculate phonon
+            make_ph_in() #make input file for ph.x
+            if sw_run:
+                print mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph')
+                os_and_print(mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph'))
                 date()
-        else: #execute only wannier90
-            make_win()
-            os_and_print('%s %s'%(wan_exe,prefix))
-    if sw_ph: #calculate phonon
-        make_ph_in() #make input file for ph.x
-        if sw_run:
-            print mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph')
-            os_and_print(mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph'))
-            date()
-    if sw_dyn:
-        make_q2r() #make input file for q2r.x
-        if sw_run:
-            if sw_so:
-                os_and_print('cp %s.dyn0 %s.dyn0.xml'%(prefix,prefix))
-            os_and_print(mpiexe+'q2r.x '+npool+os_io(prefix,'q2r'))
-        make_matdyn(False) #make input file for matdyn.x (for dos and alpha^2F calculation)
-        if sw_run:
-            os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'matdyn'))
-            date()
-            if sw_gen_a2f: #create a2F.dos.dat files for plotting
-                for i in range(qnum):
-                    fname='a2F.dos%s'%(i+1)
-                    tmp1=[f for f in open(fname,'r')]
-                    tmp=tmp1[5:-1]
-                    tmp1=[t1.strip()+t2 for t1,t2 in zip(tmp,tmp[1:])]
-                    tmp=tmp1[::2]
-                    f=open(fname+'.dat','w')
-                    for i in tmp:
-                        f.write(i)
-                    f.close()
-        make_matdyn(True) #make input file for matdyn.x (for phonon dispersion calculation)
-        if sw_run:
-            os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'freq'))
-        make_plotband_in(False,pband_win) #make input file for plotband.x
-        if sw_run:
-            os_and_print('plotband.x '+os_io('pband','plotband'))
-    if sw_save_dir:
-        import shutil
-        f=open('%s.dyn0'%prefix)
-        f.readline()
-        nq=int(f.readline())
-        f.close()
-        if not os.path.isdir('save'):
-            os.mkdir('save')
-        if not os.path.isdir('save/'+prefix+'.phsave'):
-            shutil.copytree('_ph0/'+prefix+'.phsave','save/'+prefix+'.phsave')
-        for i in range(nq):
-            qn=str(i+1)
-            dvscf_dir='' if i==0 else prefix+'.q_'+qn+'/'
-            shutil.copy(prefix+'.dyn'+qn+dxml,'save/'+prefix+'.dyn_q'+qn)
-            shutil.copy('_ph0/'+dvscf_dir+prefix+'.dvscf1','save/'+prefix+'.dvscf_q'+qn)
-    if sw_epw:
-        make_epw()
-        if sw_run:
-            os_and_print(mpiexe+'epw.x '+npool+os_io(prefix,'epw'))
-    date()
-
+        if sw_dyn:
+            make_q2r() #make input file for q2r.x
+            if sw_run:
+                if sw_so:
+                    os_and_print('cp %s.dyn0 %s.dyn0.xml'%(prefix,prefix))
+                os_and_print(mpiexe+'q2r.x '+npool+os_io(prefix,'q2r'))
+                make_matdyn(False) #make input file for matdyn.x (for dos and alpha^2F calculation)
+            if sw_run:
+                os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'matdyn'))
+                date()
+                if sw_gen_a2f: #create a2F.dos.dat files for plotting
+                    for i in range(qnum):
+                        fname='a2F.dos%s'%(i+1)
+                        tmp1=[f for f in open(fname,'r')]
+                        tmp=tmp1[5:-1]
+                        tmp1=[t1.strip()+t2 for t1,t2 in zip(tmp,tmp[1:])]
+                        tmp=tmp1[::2]
+                        f=open(fname+'.dat','w')
+                        for i in tmp:
+                            f.write(i)
+                        f.close()
+            make_matdyn(True) #make input file for matdyn.x (for phonon dispersion calculation)
+            if sw_run:
+                os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'freq'))
+            make_plotband_in(False,pband_win) #make input file for plotband.x
+            if sw_run:
+                os_and_print('plotband.x '+os_io('pband','plotband'))
+        if sw_save_dir:
+            import shutil
+            f=open('%s.dyn0'%prefix)
+            f.readline()
+            nq=int(f.readline())
+            f.close()
+            if not os.path.isdir('save'):
+                os.mkdir('save')
+            if not os.path.isdir('save/'+prefix+'.phsave'):
+                shutil.copytree('_ph0/'+prefix+'.phsave','save/'+prefix+'.phsave')
+            for i in range(nq):
+                qn=str(i+1)
+                dvscf_dir='' if i==0 else prefix+'.q_'+qn+'/'
+                shutil.copy(prefix+'.dyn'+qn+dxml,'save/'+prefix+'.dyn_q'+qn)
+                shutil.copy('_ph0/'+dvscf_dir+prefix+'.dvscf1','save/'+prefix+'.dvscf_q'+qn)
+        if sw_epw:
+            make_epw()
+            if sw_run:
+                os_and_print(mpiexe+'epw.x '+npool+os_io(prefix,'epw'))
+                date()
 
 if __name__=="__main__":
     main(prefix)
