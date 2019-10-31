@@ -27,37 +27,37 @@
 (mpi_num, kthreads_num) = (36, 6)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
 
-(start_q, last_q)=(0, 0)
+(start_q, last_q) = (0, 0)
 
 #optional parameters
-aa=2.984                                #lattice parameter a
-ab=aa                                   #lattice parameter b
-ac=aa                                   #lattice parameter c
+aa = 2.984                              #lattice parameter a
+ab = aa                                 #lattice parameter b
+ac = aa                                 #lattice parameter c
 
-alpha=90.                               #lattice angle α
-beta=90.                                #lattice angle β
-gamma=90.                              #lattice angle γ
+alpha = 90.                             #lattice angle α
+beta = 90.                              #lattice angle β
+gamma = 90.                             #lattice angle γ
 
 #======================Crystal structure===========================
-prefix='H3S'                            #material name (or job name)
-space=229                               #space group
-atom=['S','H']                    #elements name
-atomic_position=[[[0., 0., 0.]],
-                 [[.5, 0., 0.],[0., .5, 0.],[0., 0., .5]]]
+prefix = 'H3S'                          #material name (or job name)
+space = 229                             #space group
+atom = ['S','H']                        #elements name
+atomic_position = [[[0., 0., 0.]],
+                   [[.5, 0., 0.],[0., .5, 0.],[0., 0., .5]]]
 #------------------------------------------------------------------
-ibrav=3                                 #brave lattice type  
-type_xc='pbe'                           #type of exchange correlation functional
-pot_type=['%s.%s-n-kjpaw_psl.1.0.0',
-          '%s.%s-kjpaw_psl.1.0.0']      #psede potential name
+ibrav = 3                               #brave lattice type  
+type_xc = 'pbe'                         #type of exchange correlation functional
+pot_type = ['%s.%s-n-kjpaw_psl.1.0.0',
+            '%s.%s-kjpaw_psl.1.0.0']    #psede potential name
 
-sw_so=F                                 #activate soc and noncliner calc.
-sw_vdW=F                                #activate van der Waals interaction
-vdW_corr='vdW-DF'                       #set van der Waals type
+sw_so = F                               #activate soc and noncliner calc.
+sw_vdW = F                              #activate van der Waals interaction
+vdW_corr = 'vdW-DF'                     #set van der Waals type
 #====================directorys settings===========================
-sw_apw=T                                #switch of pp dir for paw( and soc) or not
-outdir='./'                             #path of output directory
+sw_apw = T                              #switch of pp dir for paw( and soc) or not
+outdir = './'                           #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = F                              #generate input file for scf calculation
+sw_scf = T                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
@@ -74,31 +74,33 @@ sw_run = F                              #switch of execute DFT calculation or no
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
-k_mesh_scf=[16]                         #k mesh for DFT calc
-k_mesh_bands=20                         #k mesh for bands calc
-k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
-ecut=60.0                               #cut off energy of pw basis
-#ec_rho=800                              #cut off energy of density
-(e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
-(scf_conv,nscf_conv)=(1.0e-12, 1.0e-10) #threshold of convergence on scf,nscf cycles
-nband=15                                #number of bands
-nstep=500                               #max number of scf cycle's step
-dgs=0.025                               #dispersion of k-mesh
-de=0.1                                  #delta E for dos
-eband_win=[-30., 15.]                   #energy range of .ps file
+k_mesh_scf = [16]                       #k mesh for DFT calc
+k_mesh_bands = 20                       #k mesh for bands calc
+k_mesh_wannier = [8,8,8]                #k mesh for wannierize
+ecut = 60.0                             #cut off energy of pw basis
+#ec_rho=800                             #cut off energy of density
+scf_max = 100                           #maximum iteration of scf
+(e_conv, f_conv) = (1.0e-5, 1.0e-4)     #threshold of total energy's convergence and force's one 
+scf_conv = 1.0e-12                      #threshold of convergence on scf cycles
+nscf_conv = 1.0e-10                     #threshold of convergence on nscf cycles
+nband = 15                              #number of bands
+nstep = 500                             #max number of scf cycle's step
+dgs = 0.025                             #dispersion of k-mesh
+de = 0.1                                #delta E for dos
+eband_win = [-30., 15.]                 #energy range of .ps file
 #edos_win=[-30., 15.]                    #energy range of .dos file
-wf_collect=T
-sw_nosym=F                              #no symmetry and no inversion
+wf_collect = T
+sw_nosym = F                            #no symmetry and no inversion
 #======================ph_parameters===============================
-q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
-q_mesh_bands=20                         #q mesh for phonon band calc
-q_mesh_dos=8                            #q mesh for phonon dos calc
-ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
-amix=0.7                                #mixing rate for ph scf default=0.7
-maxiter_ph= 100                         #max iteration default=100
-pband_win=[0, 2000]                     #energy range of .ps file
+q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
+q_mesh_bands = 20                       #q mesh for phonon band calc
+q_mesh_dos = 8                          #q mesh for phonon dos calc
+ph_conv = 1.0e-14                       #threshold of energy's convergence for phonon
+amix = 0.7                              #mixing rate for ph scf default=0.7
+maxiter_ph = 100                        #max iteration default=100
+pband_win = [0, 2000]                   #energy range of .ps file
 sw_ep = T                               #swich to calc. e-p interaction or not
-qnum=10                                 #number of irreducible q points
+qnum = 10                               #number of irreducible q points
 sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
@@ -593,8 +595,8 @@ def make_pw_in(calc,kconfig):
     fs_system=make_fstring_obj('system',var_system,val_system,'pw')
     fstream=fstream+fs_system
 
-    var_electrons=['diagonalization','conv_thr']
-    val_electrons={'diagonalization':"'david'",'conv_thr':w_conv(convthr)}
+    var_electrons=['electron_maxstep','diagonalization','conv_thr']
+    val_electrons={'electron_maxstep':scf_max,'diagonalization':"'david'",'conv_thr':w_conv(convthr)}
     fs_electrons=make_fstring_obj('electrons',var_electrons,val_electrons,'pw')
     fstream=fstream+fs_electrons
 
@@ -879,8 +881,22 @@ def main(prefix):
     if sw_opt: #optimaization
         make_pw_in('vc-relax',False) #make pw.x's input file for scf
         if sw_run:
+            ck_conv=True
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
             date()
+            for i in range(10):
+                fname='%s.%s.out'%(name,ext)
+                if os.path.exists(fname):
+                    for f in open(fname,'r'):
+                        if f.find('convergence NOT achieved after 100 iterations: stopping')!=-1:
+                            restart="'restart'"
+                            ck_conv=False
+                else:
+                    print('optimization error!')
+                if(not ck_conv):
+                    make_pw_in('vc-relax',False,restart) #make pw.x's input file for scf
+                    os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
+                    date()
     else:
         if sw_scf: #calculate scf cycle
             make_pw_in('scf',False) #make pw.x's input file for scf
