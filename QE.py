@@ -3,14 +3,11 @@
 ### options for GE job maneger
 #$ -cwd
 #$ -V -S /usr/local/Python-2.7.12/bin/python
-#$ -N H3S
+#$ -N Name
 #$ -e out.e
 #$ -o out.o
 #$ -pe smp 40
-##$ -pe fillup 120
-##$ -q bitra.q
-#$ -q salvia.q
-##$ -q lantana.q
+#$ -q queue_name
 ### options for PJM job manager
 #PJM -L "rscunit=ito-a"
 #PJM -L "rscgrp=ito-ss"
@@ -27,37 +24,37 @@
 (mpi_num, kthreads_num) = (36, 6)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
 
-(start_q, last_q) = (0, 0)
+(start_q, last_q)=(0, 0)
 
 #optional parameters
-aa = 2.984                              #lattice parameter a
-ab = aa                                 #lattice parameter b
-ac = aa                                 #lattice parameter c
+aa=3.189                                #lattice parameter a
+ab=aa                                   #lattice parameter b
+ac=5.178                                #lattice parameter c
 
-alpha = 90.                             #lattice angle α
-beta = 90.                              #lattice angle β
-gamma = 90.                             #lattice angle γ
+alpha=90.                               #lattice angle alpha
+beta=90.                                #lattice angle beta
+gamma=120.                              #lattice angle gamma
 
 #======================Crystal structure===========================
-prefix = 'H3S'                          #material name (or job name)
-space = 229                             #space group
-atom = ['S','H']                        #elements name
-atomic_position = [[[0., 0., 0.]],
-                   [[.5, 0., 0.],[0., .5, 0.],[0., 0., .5]]]
+prefix='GaN'                            #material name (or job name)
+space=186                               #space group
+atom=['Ga','N']                         #Elements Name
+atomic_position=[[[1./3., 2./3., 0.],[2./3., 1./3., .5]],
+                 [[1./3., 2./3., 3./8.],[2./3., 1./3., 7./8.]]]
 #------------------------------------------------------------------
-ibrav = 3                               #brave lattice type  
-type_xc = 'pbe'                         #type of exchange correlation functional
-pot_type = ['%s.%s-n-kjpaw_psl.1.0.0',
-            '%s.%s-kjpaw_psl.1.0.0']    #psede potential name
+ibrav=3                                 #brave lattice type  
+type_xc='pbesol'                        #type of exchange correlation functional
+pot_type=['%s.%s-dn-kjpaw_psl.1.0.0',
+          '%s.%s-n-kjpaw_psl.1.0.0']    #psede potential name
 
-sw_so = F                               #activate soc and noncliner calc.
-sw_vdW = F                              #activate van der Waals interaction
-vdW_corr = 'vdW-DF'                     #set van der Waals type
+sw_so=F                                 #activate soc and noncliner calc.
+sw_vdW=F                                #activate van der Waals interaction
+vdW_corr='vdW-DF'                       #set van der Waals type
 #====================directorys settings===========================
-sw_apw = T                              #switch of pp dir for paw( and soc) or not
-outdir = './'                           #path of output directory
+sw_apw=T                                #switch of pp dir for paw( and soc) or not
+outdir='./'                             #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = T                              #generate input file for scf calculation
+sw_scf = F                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
@@ -68,39 +65,38 @@ sw_save_dir = F                         #generate save directory for epw
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
-sw_restart = F                          #switch restart tag or not
-sw_opt = F                              #switch optimization
+sw_restart = T                          #switch restart tag or not
+sw_opt = T
 sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
-k_mesh_scf = [16]                       #k mesh for DFT calc
-k_mesh_bands = 20                       #k mesh for bands calc
-k_mesh_wannier = [8,8,8]                #k mesh for wannierize
-ecut = 60.0                             #cut off energy of pw basis
-#ec_rho=800                             #cut off energy of density
-scf_max = 100                           #maximum iteration of scf
-(e_conv, f_conv) = (1.0e-5, 1.0e-4)     #threshold of total energy's convergence and force's one 
-scf_conv = 1.0e-12                      #threshold of convergence on scf cycles
-nscf_conv = 1.0e-10                     #threshold of convergence on nscf cycles
-nband = 15                              #number of bands
-nstep = 500                             #max number of scf cycle's step
-dgs = 0.025                             #dispersion of k-mesh
-de = 0.1                                #delta E for dos
-eband_win = [-30., 15.]                 #energy range of .ps file
+k_mesh_scf=[4,4,8]                      #k mesh for DFT calc
+k_mesh_bands=20                         #k mesh for bands calc
+k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
+ecut=60.0                               #cut off energy of pw basis
+ec_rho=800                              #cut off energy of density
+(e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
+(scf_conv,nscf_conv)=(1.0e-8, 1.0e-8)   #threshold of convergence on scf,nscf cycles
+nband=500                               #number of bands
+nstep=900                               #max number of scf cycle's step
+dgs=0.025                               #dispersion of k-mesh
+de=0.1                                  #delta E for dos
+eband_win=[-30., 15.]                   #energy range of .ps file
 #edos_win=[-30., 15.]                    #energy range of .dos file
-wf_collect = T
-sw_nosym = F                            #no symmetry and no inversion
+wf_collect=T
+sw_nosym=F                              #no symmetry and no inversion
+opt_vol=F                               #optimize only lattice parameters
 #======================ph_parameters===============================
-q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
-q_mesh_bands = 20                       #q mesh for phonon band calc
-q_mesh_dos = 8                          #q mesh for phonon dos calc
-ph_conv = 1.0e-14                       #threshold of energy's convergence for phonon
-amix = 0.7                              #mixing rate for ph scf default=0.7
-maxiter_ph = 100                        #max iteration default=100
-pband_win = [0, 2000]                   #energy range of .ps file
+q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
+q_mesh_bands=20                         #q mesh for phonon band calc
+q_mesh_dos=8                            #q mesh for phonon dos calc
+ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
+amix=0.7                                #mixing rate for ph scf default=0.7
+maxiter_ph= 100                         #max iteration default=100
+pband_win=[0, 2000]                     #energy range of .ps file
 sw_ep = T                               #swich to calc. e-p interaction or not
-qnum = 10                               #number of irreducible q points
+qnum=10                                 #number of irreducible q points
 sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
@@ -123,21 +119,26 @@ sig_fig = 9                             #significant figure after decimal fracti
 bohr=round(0.52917721067, sig_fig)       #Bohr Radius
 ibohr=1.0/bohr                          #inverse of Bohr Radius
 #========================= atomic mass ============================
-mass={'H':1.00794,                                                                            'He':4.002602,
-      'Li':6.941,'Be':9.012182,'B':10.811,'C':12.0107, 'N':14.0067,'O':15.9994,'F':18.9984032,'Ne':20.1797,
-      'Na':22.98977,'Mg':24.305,  'Al':26.981538,'Si':28.0855,'P':30.973761,'S':32.065,'Cl':35.453,'Ar':39.948,
-      'K':39.0983,  'Ca':40.078,  'Sc':44.95591,
-      'Ti':47.867,'V':50.9415,'Cr':51.9961,'Mn':54.938049,'Fe':55.845,'Co':58.9332,'Ni':58.6934,'Cu':63.546,
-      'Zn':65.409,'Ga':69.723,'Ge':72.64,'As':74.9216,'Se':78.96,'Br':79.904,'Kr':83.798,
-      'Rb':85.4678,'Sr':87.62,'Y':88.90585,
-      'Zr':91.224,'Nb':92.90638,'Mo':95.94,'Tc':97.907216,'Ru':101.07,'Rh':102.9055,'Pd':106.42,'Ag':107.8682,
-      'Cd':112.411,'In':114.818,'Sn':118.71,'Sb':121.76,'Te':127.6,'I':126.90447,'Xe':131.293,
+#       1             2             13            14          15          16           17            18
+mass={'H':1.00794,                                                                                  'He':4.002602,
+      'Li':6.941,    'Be':9.012182,'B':10.811,   'C':12.0107,'N':14.0067,'O':15.9994,'F':18.9984032,'Ne':20.1797,
+      'Na':22.98977, 'Mg':24.305,  'Al':26.981538,'Si':28.0855,'P':30.973761,'S':32.065,'Cl':35.453,'Ar':39.948,
+      'K':39.0983,   'Ca':40.078,
+                               'Sc':44.95591,'Ti':47.867,'V':50.9415,'Cr':51.9961,'Mn':54.938049, #3d
+                               'Fe':55.845,'Co':58.9332,'Ni':58.6934,'Cu':63.546,'Zn':65.409,     #3d
+                                   'Ga':69.723,  'Ge':72.64, 'As':74.9216,'Se':78.96, 'Br':79.904,  'Kr':83.798,
+      'Rb':85.4678,  'Sr':87.62,
+                               'Y':88.90585,'Zr':91.224,'Nb':92.90638,'Mo':95.94,'Tc':97.907216,  #4d
+                               'Ru':101.07,'Rh':102.9055,'Pd':106.42,'Ag':107.8682,'Cd':112.411,  #4d
+                                   'In':114.818, 'Sn':118.71,'Sb':121.76,'Te':127.6,  'I':126.90447,'Xe':131.293,
       'Cs':132.90545,'Ba':137.327,
-      'La':138.9055,'Ce':140.116,'Pr':140.90765,'Nd':144.24,'Pm':144.912744,'Sm':150.36,'Eu':151.964,'Gd':157.25,
-      'Tb':158.92534,'Dy':162.5,'Ho':164.93032,'Er':167.259,'Tm':168.93421,'Yb':173.04,'Lu':174.967,
-      'Hf':178.49,'Ta':180.9479,'W':183.84,'Re':186.207,'Os':190.23,'Ir':192.217,'Pt':195.078,'Au':196.96655,
-      'Hg':200.59,'Tl':204.3833,'Pb':207.2,'Bi':208.98038,
-      'Th':232.0381,'Pa':231.03588,'U':238.02891}
+                               'La':138.9055, #lanthanide
+             'Ce':140.116,'Pr':140.90765,'Nd':144.24,'Pm':144.912744,'Sm':150.36,'Eu':151.964,'Gd':157.25,
+             'Tb':158.92534,'Dy':162.5,'Ho':164.93032,'Er':167.259,'Tm':168.93421,'Yb':173.04,'Lu':174.967,
+                               'Ln':138.9055,'Hf':178.49,'Ta':180.9479,'W':183.84,'Re':186.207,   #5d
+                               'Os':190.23,'Ir':192.217,'Pt':195.078,'Au':196.96655,'Hg':200.59,  #5d
+                                   'Tl':204.3833,'Pb':207.2,'Bi':208.98038,
+             'Th':232.0381,'Pa':231.03588,'U':238.02891} #actinide
 #==========================global_variables========================
 axis=[aa,ab,ac]                         #lattice parameters a,b,c
 deg=[alpha,beta,gamma]                  #lattice parameters alpha,beta,gamma
@@ -146,7 +147,6 @@ fildvscf="'dvscf'"
 fildyn='%s.dyn'%prefix
 flfrc='%s.fc'%prefix
 recover=TorF(sw_restart)
-restart="'from_scratch'"
 dxml='.xml' if sw_so else ''
 #==============serch several variables and initialize if can't find
 try: #detect type_xc
@@ -155,9 +155,9 @@ except NameError:
     type_xc='pbe'
 if sw_so or sw_apw:
     txc='rel-'+type_xc if sw_so else type_xc
-    pseude_dir='/home/Apps/UPF/%s/'%txc
+    pseude_dir='/home/usr2/h70252j/UPF/%s/'%txc 
 else:
-    pseude_dir='/home/Apps/upf_files/'
+    pseude_dir='/home/usr2/h70252j/UPF/'
     txc=type_xc
 UPF=[pp%(at,txc)+'.UPF' for pp, at in zip(pot_type,atom)]
 
@@ -374,10 +374,11 @@ def atom_position(atom,atomic_position):
     mat=get_cr_mat(num_brav,F)
     mat=np.linalg.inv(mat).T
     aposition=[[list(mat.dot(np.array(ap))) for ap in app] for app in atomic_position]
+    tmp='%2s  %12.9f %12.9f %12.9f'+(' 0 0 0\n' if(sw_opt and opt_vol) else '\n')
     atom_string=''
     for i,at in enumerate(atom):
         for ap in aposition[i]:
-            atom_string=atom_string+'%2s  %12.9f %12.9f %12.9f\n'%tuple([at]+ap)
+            atom_string=atom_string+tmp%tuple([at]+ap)
 
     return atom_string
 
@@ -507,7 +508,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
     return k_string
 
 #---------------------input file generators-------------------------------
-def make_pw_in(calc,kconfig):
+def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     def atomic_parameters_stream(atom,atomic_position,UPF):
         atom_string='\nATOMIC_SPECIES\n'
         for at,up in zip(atom,UPF):
@@ -532,16 +533,16 @@ def make_pw_in(calc,kconfig):
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream=fstream+fs_control
 
-
-    var_system=['ibrav','nat','ntyp','occupations','smearing','degauss',
-                'la2f','nbnd','ecutwfc']
-    if(sw_nosym):
-        var_system=var_system+['nosym','noinv']
+    var_system=['ibrav','nat','ntyp','occupations','smearing','degauss','nbnd','ecutwfc']
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
                 'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.',
                 'vdw_corr':"'%s'"%vdW_corr}
+    if(sw_ph):
+        var_system=varsystem+['la2f']
+    if(sw_nosym):
+        var_system=var_system+['nosym','noinv']
     try:
         ec_rho
         var_system=var_system+['ecutrho']
@@ -595,8 +596,8 @@ def make_pw_in(calc,kconfig):
     fs_system=make_fstring_obj('system',var_system,val_system,'pw')
     fstream=fstream+fs_system
 
-    var_electrons=['electron_maxstep','diagonalization','conv_thr']
-    val_electrons={'electron_maxstep':scf_max,'diagonalization':"'david'",'conv_thr':w_conv(convthr)}
+    var_electrons=['diagonalization','conv_thr']
+    val_electrons={'diagonalization':"'david'",'conv_thr':w_conv(convthr)}
     fs_electrons=make_fstring_obj('electrons',var_electrons,val_electrons,'pw')
     fstream=fstream+fs_electrons
 
