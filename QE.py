@@ -47,12 +47,12 @@ type_xc='pbesol'                        #type of exchange correlation functional
 pot_type=['%s.%s-dn-kjpaw_psl.1.0.0',
           '%s.%s-n-kjpaw_psl.1.0.0']    #psede potential name
 
-sw_so=F                                 #activate soc and noncliner calc.
-sw_vdW=F                                #activate van der Waals interaction
-vdW_corr='vdW-DF'                       #set van der Waals type
+sw_so = F                               #activate soc and noncliner calc.
+sw_vdW = F                              #activate van der Waals interaction
+vdW_corr = 'vdW-D'                      #set van der Waals type
 #====================directorys settings===========================
-sw_apw=T                                #switch of pp dir for paw( and soc) or not
-outdir='./'                             #path of output directory
+sw_apw = T                              #switch of pp dir for paw( and soc) or not
+outdir = './'                           #path of output directory
 #===============switch & number of parallel threads================
 sw_scf = F                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
@@ -71,43 +71,45 @@ sw_run = F                              #switch of execute DFT calculation or no
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
-k_mesh_scf=[4,4,8]                      #k mesh for DFT calc
-k_mesh_bands=20                         #k mesh for bands calc
-k_mesh_wannier=[8,8,8]                  #k mesh for wannierize
-ecut=60.0                               #cut off energy of pw basis
-ec_rho=800                              #cut off energy of density
-(e_conv, f_conv)=(1.0e-5, 1.0e-4)       #threshold of total energy's convergence and force's one 
-(scf_conv,nscf_conv)=(1.0e-8, 1.0e-8)   #threshold of convergence on scf,nscf cycles
-nband=500                               #number of bands
-nstep=900                               #max number of scf cycle's step
-dgs=0.025                               #dispersion of k-mesh
-de=0.1                                  #delta E for dos
-eband_win=[-30., 15.]                   #energy range of .ps file
-#edos_win=[-30., 15.]                    #energy range of .dos file
-wf_collect=T
-sw_nosym=F                              #no symmetry and no inversion
-opt_vol=F                               #optimize only lattice parameters
+k_mesh_scf = [8,8,8]                    #k mesh for DFT calc
+k_mesh_bands = 20                       #k mesh for bands calc
+k_mesh_wannier = [8,8,8]                #k mesh for wannierize
+ecut = 60.0                             #cut off energy of pw basis
+ec_rho = 800                            #cut off energy of density
+(e_conv, f_conv) = (1.0e-5, 1.0e-4)     #threshold of total energy's convergence and force's one 
+(scf_conv,nscf_conv) = (1.0e-8, 1.0e-8) #threshold of convergence on scf,nscf cycles
+elec_step = 200                         #threthold of scf cycle
+nband = 30                              #number of bands
+nstep = 100                             #number of MD or optimization step
+dgs = 0.025                             #dispersion of k-mesh
+de = 0.1                                #delta E for dos
+eband_win = [-30., 15.]                 #energy range of .ps file
+#edos_win = [-30., 15.]                  #energy range of .dos file
+wf_collect = T
+sw_nosym = F                            #no symmetry and no inversion
+opt_vol = F                             #optimize only lattice parameters
+scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
 #======================ph_parameters===============================
-q_mesh_dyn=[4, 4, 4]                    #q mesh for phonon DFPT calc
-q_mesh_bands=20                         #q mesh for phonon band calc
-q_mesh_dos=8                            #q mesh for phonon dos calc
-ph_conv=1.0e-14                         #threshold of energy's convergence for phonon
-amix=0.7                                #mixing rate for ph scf default=0.7
-maxiter_ph= 100                         #max iteration default=100
-pband_win=[0, 2000]                     #energy range of .ps file
+q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
+q_mesh_bands = 20                       #q mesh for phonon band calc
+q_mesh_dos = 8                          #q mesh for phonon dos calc
+ph_conv = 1.0e-14                       #threshold of energy's convergence for phonon
+amix = 0.7                              #mixing rate for ph scf default=0.7
+maxiter_ph = 100                        #max iteration default=100
+pband_win = [0, 2000]                   #energy range of .ps file
 sw_ep = T                               #swich to calc. e-p interaction or not
-qnum=10                                 #number of irreducible q points
+qnum = 10                               #number of irreducible q points
 sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
-nwann=1                                 #number of wannier basis
-dis_win=[-30.00, 30.00]                 #max(min)_window, range of sub space energy
-frz_win=[-0.0, 0.0]                     #froz_window dp22
-projection=[('H','s')]                  #projections, initial funcution of wannier
-sw_fs_plot= F                           #plot Fermi surface
+nwann = 1                               #number of wannier basis
+dis_win = [-30.00, 30.00]               #max(min)_window, range of sub space energy
+frz_win = [-0.0, 0.0]                   #froz_window dp22
+projection = [('H','s')]                #projections, initial funcution of wannier
+sw_fs_plot = F                          #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
-unk=F                                   #Bloch(Wannier)_func
-uwrite=F                                #output unitary matrix for bloch to wannier
+unk = F                                 #Bloch(Wannier)_func
+uwrite = F                              #output unitary matrix for bloch to wannier
 #=============================modules==============================
 import numpy as np
 import os, datetime
@@ -539,9 +541,9 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
                 'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.',
                 'vdw_corr':"'%s'"%vdW_corr}
-    if(sw_ph):
+    if sw_ph:
         var_system=varsystem+['la2f']
-    if(sw_nosym):
+    if sw_nosym:
         var_system=var_system+['nosym','noinv']
     try:
         ec_rho
@@ -597,7 +599,16 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     fstream=fstream+fs_system
 
     var_electrons=['diagonalization','conv_thr']
-    val_electrons={'diagonalization':"'david'",'conv_thr':w_conv(convthr)}
+    val_electrons={'diagonalization':"'david'",'conv_thr':w_conv(convthr),'scf_must_converge':'.False.'}
+    if sw_opt:
+        try:
+            elec_step
+            var_electrons=var_electrons+['electron_maxstep']
+            val_electrons.update({'electron_maxstep':elec_step})
+        except NameError:
+            pass
+        if scf_mustnot_conv:
+            var_electrons=var_electrons+['scf_must_converge']
     fs_electrons=make_fstring_obj('electrons',var_electrons,val_electrons,'pw')
     fstream=fstream+fs_electrons
 
