@@ -54,7 +54,7 @@ vdW_corr = 'vdW-D'                      #set van der Waals type
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
 outdir = './'                           #path of output directory
 #===============switch & number of parallel threads================
-sw_scf = F                              #generate input file for scf calculation
+sw_scf = T                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
@@ -66,7 +66,7 @@ sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
 sw_restart = T                          #switch restart tag or not
-sw_opt = T
+sw_opt = F
 sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
@@ -112,7 +112,7 @@ unk = F                                 #Bloch(Wannier)_func
 uwrite = F                              #output unitary matrix for bloch to wannier
 #=============================modules==============================
 import numpy as np
-import os, datetime
+import os, datetime, subprocess
 #=====================global_lambda_expression=====================
 TorF=lambda x:'.True.' if x else '.False.'
 w_conv=lambda a:'1.0E%d'%int(np.log10(a))
@@ -339,7 +339,7 @@ def date():
 
 def os_and_print(command):
     print(command)
-    os.system(command)
+    subprocess.call(command,shell=True)
 
 def get_ef(name,ext):
     fname='%s.%s.out'%(name,ext)
@@ -999,7 +999,7 @@ def main(prefix):
             nq=int(f.readline())
             f.close()
             if not os.path.isdir('save'):
-                os.mkdir('save')
+                os.makedirs('save',exist_ok=True)
             if not os.path.isdir('save/'+prefix+'.phsave'):
                 shutil.copytree('_ph0/'+prefix+'.phsave','save/'+prefix+'.phsave')
             for i in range(nq):
