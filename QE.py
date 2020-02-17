@@ -589,9 +589,9 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                 val_system.update({'celldm(5)':round(np.cos(np.pi*deg[1]/180.),sig_fig)})
             elif ibrav==14:
                 var_system=var_system+['celldm(4)','celldm(5)','celldm(6)']
-                val_system.update({'celldm(4)':round(np.cos(np.pi*deg[2]/180.),sig_fig),
+                val_system.update({'celldm(4)':round(np.cos(np.pi*deg[0]/180.),sig_fig),
                                    'celldm(5)':round(np.cos(np.pi*deg[1]/180.),sig_fig),
-                                   'celldm(6)':round(np.cos(np.pi*deg[0]/180.),sig_fig)})
+                                   'celldm(6)':round(np.cos(np.pi*deg[2]/180.),sig_fig)})
         elif ibrav in (5,-5):
             var_system=var_system+['celldm(4)']
             val_system.update({'celldm(4)':round(np.cos(np.pi*deg[2]/180.),sig_fig)})
