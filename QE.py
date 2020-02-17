@@ -171,88 +171,91 @@ except NameError:
 try: #detect brav
     num_brav
 except NameError:
-    if isinstance(space,int):
-        if space in {23,24,44,45,46,71,72,73,74,79,80,82,87,88,
-                     97,98,107,108,109,110,119,120,121,122,139,
-                     140,141,142,197,199,204,206,211,214,217,220,229,230}: #I (Body Center)
-            if space >195: #BCC
-                num_brav=3
-            elif space>75: #BCT
-                num_brav=7
-            else: #BCO
-                num_brav=10
-        elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}: #F (Face Center)
-            if space >195: #FCC
-                num_brav=2
-            else: #FCO
-                num_brav=9
-        elif space in {146,148,155,160,161,166,167}: #R (trigonal(rhombohedral))
-            num_brav=5
-        elif space in {38,39,40,41,5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}: #ABC (Base Center)
-            if space >16: #Ortho
-                num_brav=11
-            else: #monocli
-                if deg[2]!=90.:
-                    num_brav=13
-                elif deg[1]!=90.:
-                    num_brav=-13
-        else: #P (Simple)
-            if space >194: #SC
-                num_brav=1
-            elif space>142: #Trigonal or Hexagonal
-                num_brav=4
-            elif space>75: #ST
-                num_brav=6
-            elif space>15: #SO
-                num_brav=8
-            elif space>2: #monocli
-                if deg[2]!=90.:
-                    num_brav=12
-                elif deg[1]!=90.:
-                    num_brav=-12
-            else:
-                num_brav=14
-    elif isinstance(space,str):
-        if 'I' in space: #Body Center
-            if '3' in space: #Cube
-                num_brav=3
-            elif '4' in space: #Tetra
-                num_brav=7
-            else: #Ortho
-                num_brav=10
-        elif 'F' in space: #Face Center
-            if '3' in space: #Cube
-                num_brav=2
-            else: #Ortho
-                num_brav=9
-        elif ('R' in space): #Trigonal
-            num_brav=5
-        elif ('A' in space): #Base Center
-            pass
-        elif ('C' in space): #Base Center
-            num_brav=11
-        else: #Simple
-            if '6' in space: #Hexagonal
-                num_brav=4
-            elif '3' in space:
-                if deg[2]==90: #Cube
+    if ibrav==0:
+        num_brav=0
+    else:
+        if isinstance(space,int):
+            if space in {23,24,44,45,46,71,72,73,74,79,80,82,87,88,
+                         97,98,107,108,109,110,119,120,121,122,139,
+                         140,141,142,197,199,204,206,211,214,217,220,229,230}: #I (Body Center)
+                if space >195: #BCC
+                    num_brav=3
+                elif space>75: #BCT
+                    num_brav=7
+                else: #BCO
+                    num_brav=10
+            elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}: #F (Face Center)
+                if space >195: #FCC
+                    num_brav=2
+                else: #FCO
+                    num_brav=9
+            elif space in {146,148,155,160,161,166,167}: #R (trigonal(rhombohedral))
+                num_brav=5
+            elif space in {38,39,40,41,5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}: #ABC (Base Center)
+                if space >16: #Ortho
+                    num_brav=11
+                else: #monocli
+                    if deg[2]!=90.:
+                        num_brav=13
+                    elif deg[1]!=90.:
+                        num_brav=-13
+            else: #P (Simple)
+                if space >194: #SC
                     num_brav=1
-                else: #Trigonal
+                elif space>142: #Trigonal or Hexagonal
                     num_brav=4
-            elif '4' in space: #Tetra
-                num_brav=6
-            elif '2' in space or 'm' in space:
-                ck=(space.count('2')+space.count('m')
-                    +space.count('n')+space.count('c')
-                    +space.count('a')+space.count('b'))
-                if ck==3: #Ortho
+                elif space>75: #ST
+                    num_brav=6
+                elif space>15: #SO
                     num_brav=8
-                elif ck==2:
-                    num_brav=8
+                elif space>2: #monocli
+                    if deg[2]!=90.:
+                        num_brav=12
+                    elif deg[1]!=90.:
+                        num_brav=-12
                 else:
-                    num_brav=13
-            else:
-                num_brav=14
+                    num_brav=14
+        elif isinstance(space,str):
+            if 'I' in space: #Body Center
+                if '3' in space: #Cube
+                    num_brav=3
+                elif '4' in space: #Tetra
+                    num_brav=7
+                else: #Ortho
+                    num_brav=10
+            elif 'F' in space: #Face Center
+                if '3' in space: #Cube
+                    num_brav=2
+                else: #Ortho
+                    num_brav=9
+            elif ('R' in space): #Trigonal
+                num_brav=5
+            elif ('A' in space): #Base Center
+                pass
+            elif ('C' in space): #Base Center
+                num_brav=11
+            else: #Simple
+                if '6' in space: #Hexagonal
+                    num_brav=4
+                elif '3' in space:
+                    if deg[2]==90: #Cube
+                        num_brav=1
+                    else: #Trigonal
+                        num_brav=4
+                elif '4' in space: #Tetra
+                    num_brav=6
+                elif '2' in space or 'm' in space:
+                    ck=(space.count('2')+space.count('m')
+                        +space.count('n')+space.count('c')
+                        +space.count('a')+space.count('b'))
+                    if ck==3: #Ortho
+                        num_brav=8
+                    elif ck==2:
+                        num_brav=8
+                    else:
+                        num_brav=13
+                else:
+                    num_brav=14
 if ibrav!=0:
     if num_brav in {1,2,3,4,5,6,7,8,10,12,13,14,-12,-13}:
         ibrav=num_brav
@@ -438,7 +441,7 @@ def get_cr_mat(num_brav,sw=T):
     else:
         try:
             cry_ax
-            mat=cry_ax
+            mat=np.array(cry_ax)
         except NameError:
             print('please set crystal axes matrix cry_ax')
             exit()
