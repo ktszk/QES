@@ -35,6 +35,7 @@ alpha=90.                               #lattice angle alpha
 beta=90.                                #lattice angle beta
 gamma=120.                              #lattice angle gamma
 
+#cry_ax[]                                #crystal axes if you use ibrav==0
 #======================Crystal structure===========================
 prefix='GaN'                            #material name (or job name)
 space=186                               #space group
@@ -183,17 +184,17 @@ except NameError:
                 elif space>75: #BCT
                     num_brav=7
                 else: #BCO
-                    num_brav=10
+                    num_brav=11
             elif space in {22,42,43,69,70,196,202,203,209,210,216,219,225,226,227,228}: #F (Face Center)
                 if space >195: #FCC
                     num_brav=2
                 else: #FCO
-                    num_brav=9
+                    num_brav=10
             elif space in {146,148,155,160,161,166,167}: #R (trigonal(rhombohedral))
                 num_brav=5
             elif space in {38,39,40,41,5,8,9,12,15,20,21,35,36,37,63,64,65,66,67,68}: #ABC (Base Center)
                 if space >16: #Ortho
-                    num_brav=11
+                    num_brav=9
                 else: #monocli
                     if deg[2]!=90.:
                         num_brav=13
@@ -222,18 +223,18 @@ except NameError:
                 elif '4' in space: #Tetra
                     num_brav=7
                 else: #Ortho
-                    num_brav=10
+                    num_brav=11
             elif 'F' in space: #Face Center
                 if '3' in space: #Cube
                     num_brav=2
                 else: #Ortho
-                    num_brav=9
+                    num_brav=10
             elif ('R' in space): #Trigonal
                 num_brav=5
             elif ('A' in space): #Base Center
                 pass
             elif ('C' in space): #Base Center
-                num_brav=11
+                num_brav=9
             else: #Simple
                 if '6' in space: #Hexagonal
                     num_brav=4
@@ -256,13 +257,7 @@ except NameError:
                         num_brav=13
                 else:
                     num_brav=14
-if ibrav!=0:
-    if num_brav in {1,2,3,4,5,6,7,8,10,12,13,14,-12,-13}:
         ibrav=num_brav
-    elif num_brav==9:
-        ibrav=11
-    elif num_brav==11:
-        ibrav=10
 
 try: #detect k_list
     k_list
@@ -296,13 +291,13 @@ except NameError: #common k-points list
         k_list=[['G',[0.,0.,0.]],['X',[0.5,0.0,0.]],
                 ['M',[0.5,0.5,0.]],['Y',[0.,0.5,0.]],
                 ['G',[0.,0.,0.]],['M',[0.5,0.5,0.]]]
-    elif num_brav==9: #fco
+    elif num_brav==9: #base centerd ortho
         k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
                 ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
-    elif num_brav==10: #bco
+    elif num_brav==10: #fco
         k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
                 ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
-    elif num_brav==11: #base centerd ortho
+    elif num_brav==11: #bco
         k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
                 ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['M',[.5,.5,0.]]]
     elif num_brav==12: #monocli
@@ -390,11 +385,11 @@ def atom_position(atom,atomic_position):
 def get_cr_mat(num_brav,sw=T):
     if num_brav in {1,6,8}: #Simple
         mat=np.identity(3)
-    elif num_brav in {2,9}: #Face center
+    elif num_brav in {2,10}: #Face center
         mat=np.array([[-.5, 0., .5],
                       [ 0., .5, .5],
                       [-.5, .5, 0.]])
-    elif num_brav in {3,7,10}: #Body center
+    elif num_brav in {3,7,11}: #Body center
         mat=np.array([[ .5, -.5, .5],
                       [ .5,  .5, .5],
                       [-.5, -.5, .5]])
@@ -416,7 +411,7 @@ def get_cr_mat(num_brav,sw=T):
                           [-tx,  -ty, tz]])
         else:
             mat=np.identity(3)
-    elif num_brav==11: #Base center
+    elif num_brav==9: #Orthorhombic Base center
         mat=np.array([[ .5, .5, 0.],
                       [-.5, .5, 0.],
                       [ 0., 0., 1.]])
