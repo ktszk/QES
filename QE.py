@@ -90,6 +90,10 @@ wf_collect = T
 sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
+#=====================LDA+U parameters=============================
+sw_ldaU = F                             #switch LDA+U
+lda_U = [0., 0.]                        #Hubbard U list, length < atom
+lda_J = [0., 0.]                        #Hubbard J list
 #======================ph_parameters===============================
 q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
 q_mesh_bands = 20                       #q mesh for phonon band calc
@@ -538,7 +542,7 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
                 'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.',
-                'vdw_corr':"'%s'"%vdW_corr}
+                'vdw_corr':"'%s'"%vdW_corr,'lda_plus_u':'.True.'}
     if sw_ph:
         var_system=varsystem+['la2f']
     if sw_nosym:
@@ -560,6 +564,12 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                 val_system.update({'input_dft':"'vdW-DF'"})
         else:
             var_system=var_system+['vdw_corr']
+    if sw_ldaU:
+        var_system=var_system+['lda_plus_u']
+        for i,U in enumerate(lda_U):
+            tmp='Hubbard_U(%d)'%(i+1)
+            var_system=var_system+[tmp]
+            val_system.update({tmp:U})
     if ibrav!=0:
         """
         setting cell parameters
@@ -598,13 +608,13 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
 
     var_electrons=['diagonalization','conv_thr']
     val_electrons={'diagonalization':"'david'",'conv_thr':w_conv(convthr),'scf_must_converge':'.False.'}
+    try:
+        elec_step
+        var_electrons=var_electrons+['electron_maxstep']
+        val_electrons.update({'electron_maxstep':elec_step})
+    except NameError:
+        pass
     if sw_opt:
-        try:
-            elec_step
-            var_electrons=var_electrons+['electron_maxstep']
-            val_electrons.update({'electron_maxstep':elec_step})
-        except NameError:
-            pass
         if scf_mustnot_conv:
             var_electrons=var_electrons+['scf_must_converge']
     fs_electrons=make_fstring_obj('electrons',var_electrons,val_electrons,'pw')
