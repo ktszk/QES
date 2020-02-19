@@ -21,12 +21,11 @@
 #BSUB -o std_output_file
 #BSUB -m "node_name"
 (T,F)=(True,False)                      #alias for bool numbers
+#======================parallel settings===========================
 (mpi_num, kthreads_num) = (36, 6)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
-
-(start_q, last_q)=(0, 0)
-
-#optional parameters
+(start_q, last_q)=(0, 0)                #start and end of q to calculate in ph.x
+#======================lattice parameters==========================
 aa=3.189                                #lattice parameter a
 ab=aa                                   #lattice parameter b
 ac=5.178                                #lattice parameter c
@@ -35,7 +34,9 @@ alpha=90.                               #lattice angle alpha
 beta=90.                                #lattice angle beta
 gamma=120.                              #lattice angle gamma
 
+#optional parameters
 #cry_ax[]                                #crystal axes if you use ibrav==0
+#klist=[]                                #if you choose your own klist, write it here.
 #======================Crystal structure===========================
 prefix='GaN'                            #material name (or job name)
 space=186                               #space group
@@ -48,13 +49,13 @@ type_xc='pbesol'                        #type of exchange correlation functional
 pot_type=['%s.%s-dn-kjpaw_psl.1.0.0',
           '%s.%s-n-kjpaw_psl.1.0.0']    #psede potential name
 
-sw_so = F                               #activate soc and noncliner calc.
+sw_so = T                               #activate soc and noncliner calc.
 sw_vdW = F                              #activate van der Waals interaction
 vdW_corr = 'vdW-D'                      #set van der Waals type
-#====================directorys settings===========================
+#=================== directorys settings ==========================
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
 outdir = './'                           #path of output directory
-#===============switch & number of parallel threads================
+#================== switch of calculation =========================
 sw_scf = T                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
@@ -67,7 +68,7 @@ sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
 sw_restart = T                          #switch restart tag or not
-sw_opt = F
+sw_opt = F                              #switch of optimaization
 sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
 sw_bsub = F                             #switch bsub
@@ -91,8 +92,8 @@ sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
 #=====================LDA+U parameters=============================
-sw_ldaU = F                             #switch LDA+U
-lda_U = [0., 0.]                        #Hubbard U list, length < atom
+sw_ldaU = T                             #switch LDA+U
+lda_U = [1.2, 0.]                        #Hubbard U list, length < atom
 lda_J = [0., 0.]                        #Hubbard J list
 #======================ph_parameters===============================
 q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
@@ -542,7 +543,7 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
                 'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.',
-                'vdw_corr':"'%s'"%vdW_corr,'lda_plus_u':'.True.'}
+                'vdw_corr':"'%s'"%vdW_corr,'lda_plus_u':'.True.','lda_plus_u_kind':1}
     if sw_ph:
         var_system=varsystem+['la2f']
     if sw_nosym:
@@ -566,10 +567,17 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
             var_system=var_system+['vdw_corr']
     if sw_ldaU:
         var_system=var_system+['lda_plus_u']
+        if sw_so or sum(lda_J)!=0:
+            var_system=var_system+['lda_plus_u_kind']
         for i,U in enumerate(lda_U):
             tmp='Hubbard_U(%d)'%(i+1)
             var_system=var_system+[tmp]
             val_system.update({tmp:U})
+        if sum(lda_J)!=0:
+            for i,J in enumerate(lda_J):
+                tmp='Hubbard_J(1,%d)'%(i+1)
+                var_system=var_system+[tmp]
+                val_system.update({tmp:J})
     if ibrav!=0:
         """
         setting cell parameters
