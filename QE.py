@@ -35,6 +35,7 @@ beta=90.                                #lattice angle beta
 gamma=120.                              #lattice angle gamma
 
 #optional parameters
+sw_celldm = F                            #use celldm(1) if ibrav==0
 #cry_ax[]                                #crystal axes if you use ibrav==0
 #klist=[]                                #if you choose your own klist, write it here.
 #======================Crystal structure===========================
@@ -49,7 +50,7 @@ type_xc='pbesol'                        #type of exchange correlation functional
 pot_type=['%s.%s-dn-kjpaw_psl.1.0.0',
           '%s.%s-n-kjpaw_psl.1.0.0']    #psede potential name
 
-sw_so = T                               #activate soc and noncliner calc.
+sw_so = F                               #activate soc and noncliner calc.
 sw_vdW = F                              #activate van der Waals interaction
 vdW_corr = 'vdW-D'                      #set van der Waals type
 #=================== directorys settings ==========================
@@ -85,16 +86,16 @@ nband = 30                              #number of bands
 nstep = 100                             #number of MD or optimization step
 dgs = 0.025                             #dispersion of k-mesh
 de = 0.1                                #delta E for dos
-eband_win = [-30., 15.]                 #energy range of .ps file
+eband_win = [-10., 15.]                 #energy range of .ps file
 #edos_win = [-30., 15.]                  #energy range of .dos file
 wf_collect = T
 sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
 #=====================LDA+U parameters=============================
-sw_ldaU = T                             #switch LDA+U
-lda_U = [1.2, 0.]                        #Hubbard U list, length < atom
-lda_J = [0., 0.]                        #Hubbard J list
+sw_ldaU = F                             #switch LDA+U
+lda_U = [0., 0., 0.]                    #Hubbard U list, length < atom
+lda_J = [0., 0., 0.]                    #Hubbard J list
 #======================ph_parameters===============================
 q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
 q_mesh_bands = 20                       #q mesh for phonon band calc
@@ -441,16 +442,22 @@ def get_cr_mat(num_brav,sw=T):
     else:
         try:
             cry_ax
-            mat=np.array(cry_ax)
+            if sw:
+                mat=np.array(cry_ax)
+            else:
+                mat=np.identity(3)
         except NameError:
             print('please set crystal axes matrix cry_ax')
             exit()
     return mat
 
 def cell_parameter_stream(axis,deg):
-    mat_ax=np.identity(3)*axis*ibohr
     mat=get_cr_mat(num_brav)
-    a_vec=list(mat.dot(mat_ax))
+    if ibrav==0 and sw_celldm:
+        a_vec=list(mat)
+    else:
+        mat_ax=np.identity(3)*axis*ibohr
+        a_vec=list(mat.dot(mat_ax))
     cell_string=''
     for aa in a_vec:
         cell_string=cell_string+'  %12.9f  %12.9f  %12.9f\n'%tuple(aa)
@@ -611,6 +618,10 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
         elif ibrav in (5,-5):
             var_system=var_system+['celldm(4)']
             val_system.update({'celldm(4)':round(np.cos(np.pi*deg[2]/180.),sig_fig)})
+    else:
+        if sw_celldm:
+            var_system=var_system+['celldm(1)']
+            val_system.update({'celldm(1)':round(axis[0]*ibohr,sig_fig)})
     fs_system=make_fstring_obj('system',var_system,val_system,'pw')
     fstream=fstream+fs_system
 
