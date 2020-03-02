@@ -94,8 +94,8 @@ opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
 #=====================LDA+U parameters=============================
 sw_ldaU = F                             #switch LDA+U
-lda_U = [0., 0., 0.]                    #Hubbard U list, length < atom
-lda_J = [0., 0., 0.]                    #Hubbard J list
+lda_U = [0., 0.]                        #Hubbard U list, length < atom
+lda_J = [0., 0.]                        #Hubbard J list
 #======================ph_parameters===============================
 q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
 q_mesh_bands = 20                       #q mesh for phonon band calc
@@ -537,7 +537,9 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     fname='%s.%s'%(prefix,fext)
     fstream=''
     var_control=['title','calculation','restart_mode','outdir','pseudo_dir',
-                 'prefix','etot_conv_thr','forc_conv_thr','nstep','tstress','tprnfor','wf_collect']
+                 'prefix','etot_conv_thr','forc_conv_thr','nstep','wf_collect']
+    if not (sw_ldaU and (sum(lda_J)!=0 or sw_so)):
+        var_control=var_control+['tstress','tprnfor']
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':w_conv(e_conv),
                  'forc_conv_thr':w_conv(f_conv),'nstep':nstep,'tstress':'.True.','tprnfor':'.True.',
@@ -576,12 +578,12 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
         var_system=var_system+['lda_plus_u']
         if sw_so or sum(lda_J)!=0:
             var_system=var_system+['lda_plus_u_kind']
-        for i,U in enumerate(lda_U):
+        for i,U in enumerate(lda_U[:len(atom)]):
             tmp='Hubbard_U(%d)'%(i+1)
             var_system=var_system+[tmp]
             val_system.update({tmp:U})
         if sum(lda_J)!=0:
-            for i,J in enumerate(lda_J):
+            for i,J in enumerate(lda_J[:len(atom)]):
                 tmp='Hubbard_J(1,%d)'%(i+1)
                 var_system=var_system+[tmp]
                 val_system.update({tmp:J})
