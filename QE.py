@@ -25,6 +25,8 @@
 (mpi_num, kthreads_num) = (36, 6)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
 (start_q, last_q)=(0, 0)                #start and end of q to calculate in ph.x
+sw_run = F                              #switch of execute DFT calculation or not
+sw_mpi = T                              #switch of MPI calculation
 #======================lattice parameters==========================
 aa=3.189                                #lattice parameter a
 ab=aa                                   #lattice parameter b
@@ -38,7 +40,7 @@ gamma=120.                              #lattice angle gamma
 sw_celldm = F                            #use celldm(1) if ibrav==0
 #cry_ax[]                                #crystal axes if you use ibrav==0
 #klist=[]                                #if you choose your own klist, write it here.
-#======================Crystal structure===========================
+#=================Crystal structure & conditions===================
 prefix='GaN'                            #material name (or job name)
 space=186                               #space group
 atom=['Ga','N']                         #Elements Name
@@ -56,6 +58,7 @@ vdW_corr = 'vdW-D'                      #set van der Waals type
 #=================== directorys settings ==========================
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
 outdir = './'                           #path of output directory
+#mpiopt='$LSF_BINDIR/openmpi-'           #direct link of mpirun or mpiexec if you need
 #================== switch of calculation =========================
 sw_scf = T                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
@@ -70,9 +73,6 @@ sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
 sw_restart = T                          #switch restart tag or not
 sw_opt = F                              #switch of optimaization
-sw_run = F                              #switch of execute DFT calculation or not
-sw_mpi = T                              #switch of MPI calculation
-sw_bsub = F                             #switch bsub
 #=====================pw_parameters================================
 k_mesh_scf = [8,8,8]                    #k mesh for DFT calc
 k_mesh_bands = 20                       #k mesh for bands calc
@@ -92,7 +92,7 @@ wf_collect = T
 sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
-#=====================LDA+U parameters=============================
+#--------------------LDA+U parameters------------------------------
 sw_ldaU = F                             #switch LDA+U
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
 lda_J = [0., 0.]                        #Hubbard J list
@@ -170,6 +170,10 @@ else:
     txc=type_xc
 UPF=[pp%(at,txc)+'.UPF' for pp, at in zip(pot_type,atom)]
 
+try:
+    mpiopt
+except NameError:
+    mpiopt=''
 try:
     edos_win
 except NameError:
@@ -911,7 +915,6 @@ def make_epw():
 #---------------------------- main ---------------------------------
 def main(prefix):
     date()
-    mpiopt='$LSF_BINDIR/openmpi-' if sw_bsub else ''
     mpiexe=mpiopt+'mpirun -np %d '%mpi_num if sw_mpi else ''
     npool='-nk %d '%kthreads_num if kthreads_num!=0 else ''
     nimage='-ni %d '%ithreads_num if ithreads_num!=0 else ''
