@@ -160,7 +160,6 @@ flfrc='%s.fc'%prefix
 recover=TorF(sw_restart)
 dxml='.xml' if sw_so else ''
 #==============serch several variables and initialize if can't find
-sw_opt = F                              #switch of optimaization           
 parser=argparse.ArgumentParser(prog='QE.py',description='input file generator for Quantum Espresso')
 parser.add_argument("-s","-scf",help='generate scf file',action='store_true')
 parser.add_argument("-d","-dos",help='generate dos calc files',action='store_true')
