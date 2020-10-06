@@ -8,6 +8,8 @@
 #$ -o out.o
 #$ -pe smp 40
 #$ -q queue_name
+### options for Torque (PBS) job maneger
+#$PBS -l nodes=1:ppn=12
 ### options for PJM job manager
 #PJM -L "rscunit=ito-a"
 #PJM -L "rscgrp=ito-ss"
@@ -22,7 +24,7 @@
 #BSUB -m "node_name"
 (T,F)=(True,False)                      #alias for bool numbers
 #======================parallel settings===========================
-(mpi_num, kthreads_num) = (36, 6)       #number of threads for MPI/openMP
+(mpi_num, kthreads_num) = (12, 4)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
 (start_q, last_q)=(0, 0)                #start and end of q to calculate in ph.x
 sw_run = F                              #switch of execute DFT calculation or not
@@ -60,7 +62,7 @@ sw_apw = T                              #switch of pp dir for paw( and soc) or n
 outdir = './'                           #path of output directory
 #mpiopt='$LSF_BINDIR/openmpi-'           #direct link of mpirun or mpiexec if you need
 #================== switch of calculation =========================
-sw_scf = T                              #generate input file for scf calculation
+sw_scf = F                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
 sw_prj = F                              #generate input file for proj calc.
 sw_bands = F                            #generate input file for band calc.
@@ -119,7 +121,7 @@ unk = F                                 #Bloch(Wannier)_func
 uwrite = F                              #output unitary matrix for bloch to wannier
 #=============================modules==============================
 import numpy as np
-import os, datetime, subprocess
+import os, datetime, subprocess, argparse
 #=====================global_lambda_expression=====================
 TorF=lambda x:'.True.' if x else '.False.'
 w_conv=lambda a:'1.0E%d'%int(np.log10(a))
@@ -158,16 +160,42 @@ flfrc='%s.fc'%prefix
 recover=TorF(sw_restart)
 dxml='.xml' if sw_so else ''
 #==============serch several variables and initialize if can't find
+sw_opt = F                              #switch of optimaization           
+parser=argparse.ArgumentParser(prog='QE.py',description='input file generator for Quantum Espresso')
+parser.add_argument("-s","-scf",help='generate scf file',action='store_true')
+parser.add_argument("-d","-dos",help='generate dos calc files',action='store_true')
+parser.add_argument("-b","-band",help='generate band calc files',action='store_true')
+parser.add_argument("-p","-ph","-phonon",help='generate phonon calc files',action='store_true')
+parser.add_argument("-w","-wan","-wannier",help='generate wannier calc files',action='store_true')
+parser.add_argument("-o","-opt","-optimize",help='generate scf file for optimization',action='store_true')
+args=parser.parse_args()
+if args.s:
+    sw_scf=True
+if args.d:
+    sw_dos=True
+if args.b:
+    sw_bands=True
+if args.p:
+    sw_ph=True
+    sw_dyn=True
+if args.w:
+    sw_wan=True
+    sw_wan_init = True
+    sw_wan_init_nscf = True
+if args.o:
+    sw_opt=True
 try: #detect type_xc
     type_xc
 except NameError:
     type_xc='pbe'
 if sw_so or sw_apw:
     txc='rel-'+type_xc if sw_so else type_xc
-    pseude_dir='/home/usr2/h70252j/UPF/%s/'%txc 
+    pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc 
+    #pseude_dir='/home/usr2/h70252j/UPF/%s/'%txc
 else:
-    pseude_dir='/home/usr2/h70252j/UPF/'
     txc=type_xc
+    pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
+    #pseude_dir='/home/usr2/h70252j/UPF/'
 UPF=[pp%(at,txc)+'.UPF' for pp, at in zip(pot_type,atom)]
 
 try:
@@ -918,7 +946,8 @@ def main(prefix):
     mpiexe=mpiopt+'mpirun -np %d '%mpi_num if sw_mpi else ''
     npool='-nk %d '%kthreads_num if kthreads_num!=0 else ''
     nimage='-ni %d '%ithreads_num if ithreads_num!=0 else ''
-    wan_exe='wan.x'
+    #wan_exe='wan.x'
+    wan_exe='wannier_ham.x' #for QE6.5 or greater
     def os_io(prefix,exe):
         name='%s.%s'%(prefix,exe)
         return '<%s>%s.out'%tuple([name]*2)
@@ -994,7 +1023,7 @@ def main(prefix):
         if sw_ph: #calculate phonon
             make_ph_in() #make input file for ph.x
             if sw_run:
-                print mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph')
+                print(mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph'))
                 os_and_print(mpiexe+'ph.x '+nimage+npool+os_io(prefix,'ph'))
                 date()
         if sw_dyn:
