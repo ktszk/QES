@@ -51,11 +51,12 @@ atomic_position=[[[1./3., 2./3., 0.],[2./3., 1./3., .5]],
 #------------------------------------------------------------------
 ibrav=3                                 #brave lattice type  
 type_xc='pbesol'                        #type of exchange correlation functional
-pot_type=['%s.%s-dn-kjpaw_psl.1.0.0',
-          '%s.%s-n-kjpaw_psl.1.0.0']    #psede potential name
+pot_kind='kjpaw_psl.1.0.0'
+pot_type=['dn','n']                     #psede potential name
 
 sw_so = F                               #activate soc and noncliner calc.
 sw_vdW = F                              #activate van der Waals interaction
+sw_spn_pol = F
 vdW_corr = 'vdW-D'                      #set van der Waals type
 #=================== directorys settings ==========================
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
@@ -94,6 +95,7 @@ wf_collect = T
 sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
+nspin=2                                 #spin polarized setting nonpol=1,z-axis=2,general=4
 #--------------------LDA+U parameters------------------------------
 sw_ldaU = F                             #switch LDA+U
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
@@ -195,7 +197,7 @@ else:
     txc=type_xc
     pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
     #pseude_dir='/home/usr2/h70252j/UPF/'
-UPF=[pp%(at,txc)+'.UPF' for pp, at in zip(pot_type,atom)]
+UPF=['%s.%s-'%(at,txc)+pp+'-'+pot_kind+'.UPF' for pp, at in zip(pot_type,atom)]
 
 try:
     mpiopt
@@ -457,19 +459,22 @@ def get_cr_mat(num_brav,sw=T):
     elif num_brav==13: #Monoclinic
         pass
     elif num_brav==14: #Monoclinic
-        phase=np.pi*deg[0]/180.
-        phase2=np.pi*deg[1]/180.
-        phase3=np.pi*deg[2]/180.
-        ax1=axis[1]/axis[0]
-        ax2=axis[2]/axis[0]
-        r1=np.cos(phase)*ax1
-        r2=np.sin(phase)*ax1
-        r3=np.cos(phase3)*ax2
-        r4=np.sin(phase)*np.cos(phase2)*ax2
-        r5=np.sin(phase2)*ax2
-        mat=np.array([[ 1., 0.,  0.],
-                      [ r1, r2,  0.],
-                      [ r3, r4, r5]])
+        if sw:
+            phase=np.pi*deg[0]/180.
+            phase2=np.pi*deg[1]/180.
+            phase3=np.pi*deg[2]/180.
+            ax1=axis[1]/axis[0]
+            ax2=axis[2]/axis[0]
+            r1=np.cos(phase)*ax1
+            r2=np.sin(phase)*ax1
+            r3=np.cos(phase3)*ax2
+            r4=np.sin(phase)*np.cos(phase2)*ax2
+            r5=np.sin(phase2)*ax2
+            mat=np.array([[ 1., 0.,  0.],
+                          [ r1, r2,  0.],
+                          [ r3, r4, r5]])
+        else:
+            mat=np.identity(3)
     else:
         try:
             cry_ax
@@ -582,7 +587,7 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
-                'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.',
+                'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.','nspin':nspin,
                 'vdw_corr':"'%s'"%vdW_corr,'lda_plus_u':'.True.','lda_plus_u_kind':1}
     if sw_ph:
         var_system=varsystem+['la2f']
@@ -605,6 +610,8 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                 val_system.update({'input_dft':"'vdW-DF'"})
         else:
             var_system=var_system+['vdw_corr']
+    if sw_spn_pol:
+        var_system=var_system+['nspin']
     if sw_ldaU:
         var_system=var_system+['lda_plus_u']
         if sw_so or sum(lda_J)!=0:
@@ -1031,7 +1038,7 @@ def main(prefix):
                 if sw_so:
                     os_and_print('cp %s.dyn0 %s.dyn0.xml'%(prefix,prefix))
                 os_and_print(mpiexe+'q2r.x '+npool+os_io(prefix,'q2r'))
-                make_matdyn(False) #make input file for matdyn.x (for dos and alpha^2F calculation)
+            make_matdyn(False) #make input file for matdyn.x (for dos and alpha^2F calculation)
             if sw_run:
                 os_and_print(mpiexe+'matdyn.x '+npool+os_io(prefix,'matdyn'))
                 date()
