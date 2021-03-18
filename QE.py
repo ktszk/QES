@@ -121,6 +121,9 @@ sw_fs_plot = F                          #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk = F                                 #Bloch(Wannier)_func
 uwrite = F                              #output unitary matrix for bloch to wannier
+#=================EPW parameters===================================
+epw_k_mesh=[16,16,16]
+epw_q_mesh=[8,8,8]
 #=============================modules==============================
 import numpy as np
 import os, datetime, subprocess, argparse
@@ -169,6 +172,7 @@ parser.add_argument("-b","-band",help='generate band calc files',action='store_t
 parser.add_argument("-p","-ph","-phonon",help='generate phonon calc files',action='store_true')
 parser.add_argument("-w","-wan","-wannier",help='generate wannier calc files',action='store_true')
 parser.add_argument("-o","-opt","-optimize",help='generate scf file for optimization',action='store_true')
+parser.add_argument("-e","-epw","-el_phonon",help='generate epw calc files',action='store_true')
 args=parser.parse_args()
 if args.s:
     sw_scf=True
@@ -185,6 +189,8 @@ if args.w:
     sw_wan_init_nscf = True
 if args.o:
     sw_opt=True
+if args.e:
+    sw_epw=True
 try: #detect type_xc
     type_xc
 except NameError:
@@ -849,8 +855,8 @@ def make_win():
 def make_ph_in():
     fname='%s.ph'%prefix
     fstream='%s\n'%prefix
-    ep_setting="'interpolated'"
-    #ep_setting="'lambda_tetra'" #calc e-p int. using opt_tetrahedra
+    #ep_setting="'interpolated'"
+    ep_setting="'lambda_tetra'" #calc e-p int. using opt_tetrahedra
 
     var_inputph=['tr2_ph','alpha_mix','niter_ph','prefix','fildyn','trans',
                  'ldisp','lqdir','recover','outdir']
@@ -952,8 +958,22 @@ def make_plotband_in(mode,win):
     write_file(fname,fstream)
 
 def make_epw():
-    pass
-
+    fname='%s.epw'%prefix
+    dvscfdir='../save'
+    val_epw={'prefix':"'%s'"%prefix,'outdir':"'./'",'dvscf_dir':"'%s'"%dvscfdir,
+             'nk1':k_mesh_wannier[0],'nk2':k_mesh_wannier[1],'nk3':k_mesh_wannier[2],
+             'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2],
+             'nkf1':epw_k_mesh[0],'nkf2':epw_k_mesh[1],'nkf3':epw_k_mesh[2],
+             'nqf1':epw_q_mesh[0],'nqf2':epw_q_mesh[1],'nqf3':epw_q_mesh[2]}
+    var_epw=['prefix']
+    for i,atm in enumerate(atom):
+        tmp='mass(%d)'%(i+1)
+        var_epw=var_epw+[tmp]
+        val_epw.update({tmp:mass[atm]})
+    var_epw=(var_epw+['outdir','dvscf_dir']+['nk%d'%(i+1) for i in range(3)]+['nq%d'%(i+1) for i in range(3)]
+             +['nkf%d'%(i+1) for i in range(3)]+['nqf%d'%(i+1) for i in range(3)])
+    fstream=make_fstring_obj('inputepw',var_epw,val_epw,'epw')
+    write_file(fname,fstream)
 #---------------------------- main ---------------------------------
 def main(prefix):
     date()
@@ -1094,7 +1114,7 @@ if __name__=="__main__":
 #==============================================================================#
 # This is auto calculation script for Quantum Espresso                         #
 #                                                                              #
-# Copyright (c) 2018-2019  K. Suzuki                                           #
+# Copyright (c) 2018-2021  K. Suzuki                                           #
 #==============================================================================#
 #                          The MIT License (MIT)                               #
 #==============================================================================#
