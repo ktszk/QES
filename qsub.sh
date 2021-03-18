@@ -15,33 +15,48 @@
 #Torque settings
 ##PBS -j oe
 ##PBS -o out.o
-#PBS -l nodes=2:ppn=16
+#PBS -l nodes=1:ppn=16
 sw_scf=0
 sw_band=0
 sw_pdos=0
-sw_opt=1
-
-ncore=32
+sw_wan=0
+sw_ph=0
+sw_post_ph=1
+ncore=16
 mat=GaN
 
-export OMP_NUM_THREADS=1
 cd $PBS_O_WORKDIR
 if [ $sw_scf -eq 1 ] ; then
   python QE.py -scf
-  mpirun -np $ncore pw.x -nk 4 <$mat.scf>$mat.scf.out
+  mpirun -np $ncore pw.x -nk=4 <$mat.scf>$mat.scf.out
 fi
 if [ $sw_band -eq 1 ] ; then
   python QE.py -dos -band
-  mpirun -np $ncore pw.x -nk 4 <$mat.nscf>$mat.nscf.out
+  mpirun -np $ncore pw.x -nk=4 <$mat.nscf>$mat.nscf.out
   if [ $sw_pdos -eq 1 ] ; then
-    mpirun -np $ncore projwfc.x -nk 4 <$mat.prjwfc>$mat.prjwfc.out
+    mpirun -np $ncore projwfc.x -nk=4 <$mat.prjwfc>$mat.prjwfc.out
   fi
   dos.x<$mat.dos_in>$mat.dos_in.out
-  mpirun -np $ncore pw.x -nk 4 <$mat.bands>$mat.bands.out
+  mpirun -np $ncore pw.x -nk=4 <$mat.bands>$mat.bands.out
   bands.x<$mat.bands_in>$mat.bands_in.out
   plotband.x<eband.plotband>eband.plotband.out
 fi
-if [ $sw_opt -eq 1 ] ; then
-  python QE.py -opt
-  mpirun -np $ncore pw.x -nt 8 <$mat.scf>$mat.scf.out
+if [ $sw_wan -eq 1 ] ; then
+  python QE.py -wan
+  mpirun -np $ncore pw.x -nk=4 <$mat.nscf>$mat.nscf.out
+  wannier90.x -pp $mat
+  mpirun -np $ncore pw2wannier90.x<$mat.pw2wan>$mat.pw2wan.out
+  wannier90.x $mat
+fi
+
+if [ $sw_ph -eq 1 ] ; then
+  python QE.py -ph
+  mpirun -np $ncore ph.x<$mat.ph>$mat.ph.out
+fi
+
+if [ $sw_post_ph -eq 1 ] ; then
+    mpirun -np $ncore q2r.x<$mat.q2r>$mat.q2r.out
+    mpirun -np $ncore matdyn.x<$mat.matdyn>$mat.matdyn.out
+    mpirun -np $ncore matdyn.x<$mat.freq>$mat.freq.out
+    plotband.x<pband.pband.plotband>pband.plotband.out
 fi

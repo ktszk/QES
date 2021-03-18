@@ -57,7 +57,7 @@ pot_type=['dn','n']                     #psede potential name
 sw_so = F                               #activate soc and noncliner calc.
 sw_vdW = F                              #activate van der Waals interaction
 sw_spn_pol = F
-vdW_corr = 'vdW-D'                      #set van der Waals type
+vdW_corr = 'vdW-DF'                      #set van der Waals type
 #=================== directorys settings ==========================
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
 outdir = './'                           #path of output directory
@@ -108,7 +108,7 @@ ph_conv = 1.0e-14                       #threshold of energy's convergence for p
 amix = 0.7                              #mixing rate for ph scf default=0.7
 maxiter_ph = 100                        #max iteration default=100
 pband_win = [0, 2000]                   #energy range of .ps file
-sw_ep = T                               #swich to calc. e-p interaction or not
+sw_ep = F                               #swich to calc. e-p interaction or not
 qnum = 10                               #number of irreducible q points
 sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
@@ -465,11 +465,12 @@ def get_cr_mat(num_brav,sw=T):
             phase3=np.pi*deg[2]/180.
             ax1=axis[1]/axis[0]
             ax2=axis[2]/axis[0]
-            r1=np.cos(phase)*ax1
-            r2=np.sin(phase)*ax1
-            r3=np.cos(phase3)*ax2
-            r4=np.sin(phase)*np.cos(phase2)*ax2
-            r5=np.sin(phase2)*ax2
+            r1=ax1*np.cos(phase3)
+            r2=ax1*np.sin(phase3)
+            r3=ax2*np.cos(phase2)
+            r4=ax2*(np.cos(phase)-np.cos(phase2)*np.cos(phase3))/np.sin(phase3)
+            r5=ax2*np.sqrt(1+2*np.cos(phase)*np.cos(phase2)*np.cos(phase3)
+                           -(np.cos(phase)**2+np.cos(phase2)**2+np.cos(phase3)**2))/np.sin(phase3)
             mat=np.array([[ 1., 0.,  0.],
                           [ r1, r2,  0.],
                           [ r3, r4, r5]])
@@ -588,9 +589,9 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
                 'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.','nspin':nspin,
-                'vdw_corr':"'%s'"%vdW_corr,'lda_plus_u':'.True.','lda_plus_u_kind':1}
-    if sw_ph:
-        var_system=varsystem+['la2f']
+                'lda_plus_u':'.True.','lda_plus_u_kind':1}
+    if sw_ep:
+        var_system=var_system+['la2f']
     if sw_nosym:
         var_system=var_system+['nosym','noinv']
     try:
@@ -608,8 +609,15 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
             else:
                 var_system=var_system+['input_dft']
                 val_system.update({'input_dft':"'vdW-DF'"})
+        elif vdW_corr=='rVV10':
+            if sw_so:
+                print('We cannot use rVV10 with noncllinear spin')
+            else:
+                var_system=var_system+['input_dft']
+                val_system.update({'input_dft':"'rVV10'"})
         else:
             var_system=var_system+['vdw_corr']
+            val_system.update({'vdw_corr':"'%s'"%vdW_corr})
     if sw_spn_pol:
         var_system=var_system+['nspin']
     if sw_ldaU:
