@@ -74,6 +74,7 @@ sw_save_dir = F                         #generate save directory for epw
 sw_wan = F                              #switch wannierization
 sw_wan_init = F                         #generate input file for wannier90
 sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
+sw_post_wan =T                          #calc postwan process
 sw_restart = T                          #switch restart tag or not
 sw_opt = F                              #switch of optimaization
 #=====================pw_parameters================================
@@ -96,6 +97,9 @@ sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
 nspin=2                                 #spin polarized setting nonpol=1,z-axis=2,general=4
+#mmom=[1,0]                              #initial spin polization
+#theta_m=[90,0]                            #initial spin angle theta (tilt for z axis)
+#phi_m=[180,0]                              #initial spin angle phi (xy plane)
 #--------------------LDA+U parameters------------------------------
 sw_ldaU = F                             #switch LDA+U
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
@@ -121,6 +125,14 @@ sw_fs_plot = F                          #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk = F                                 #Bloch(Wannier)_func
 uwrite = F                              #output unitary matrix for bloch to wannier
+#=====================postwan_parameters===========================
+#---------------------Boltz_wann-----------------------------------
+boltz_kmesh=40                          #k-mesh size of boltzwann
+btau=1                                  #relaxation time of boltwann
+mu_range=[0.,0.]                        #mu range of boltzwann
+bmu_step=1                               #mu step of boltzwann
+temp_range=[50,1000]                    #temp range of boltzwann
+bt_step=50                              #temp step size of boltzwann
 #=================EPW parameters===================================
 epw_k_mesh=[16,16,16]
 epw_q_mesh=[8,8,8]
@@ -203,7 +215,7 @@ else:
     txc=type_xc
     pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
     #pseude_dir='/home/usr2/h70252j/UPF/'
-UPF=['%s.%s-'%(at,txc)+pp+'-'+pot_kind+'.UPF' for pp, at in zip(pot_type,atom)]
+UPF=['%s.%s-'%(at[:2],txc)+pp+'-'+pot_kind+'.UPF' for pp, at in zip(pot_type,atom)]
 
 try:
     mpiopt
@@ -567,7 +579,7 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     def atomic_parameters_stream(atom,atomic_position,UPF):
         atom_string='\nATOMIC_SPECIES\n'
         for at,up in zip(atom,UPF):
-            atom_string=atom_string+' %-2s %11.7f  %s\n'%(at,mass[at],up)
+            atom_string=atom_string+' %-2s %11.7f  %s\n'%(at,mass[at[:2]],up)
         atom_string=atom_string+'\nATOMIC_POSITIONS crystal\n'
         atom_string=atom_string+atom_position(atom,atomic_position)
         atom_string=atom_string+'\n'
@@ -626,6 +638,19 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
             val_system.update({'vdw_corr':"'%s'"%vdW_corr})
     if sw_spn_pol:
         var_system=var_system+['nspin']
+        if len(mmom)!=0:
+            for i,m in enumerate(mmom):
+                var_system=var_system+['starting_magnetization(%d)'%(i+1)]
+                val_system.update({'starting_magnetization(%d)'%(i+1):m})
+            if nspin==4:
+                if len(theta_m)!=0:
+                    for i,m in enumerate(theta_m):
+                        var_system=var_system+['angle1(%d)'%(i+1)]
+                        val_system.update({'angle1(%d)'%(i+1):m})
+                if len(phi_m)!=0:
+                    for i,m in enumerate(phi_m):
+                        var_system=var_system+['angle2(%d)'%(i+1)]
+                        val_system.update({'angle2(%d)'%(i+1):m})
     if sw_ldaU:
         var_system=var_system+['lda_plus_u']
         if sw_so or sum(lda_J)!=0:
@@ -840,6 +865,17 @@ def make_win():
               ['fermi_surface_num_points',fermi_mesh],['bands_plot','.True.'],['write_hr','.True.'],['write_u_matrices',TorF(uwrite)]]
     plot_strings=win_strings(plot_val,'plot')
 
+    if sw_post_wan:
+        bmu_min=ef-mu_range[0]
+        bmu_max=ef+mu_range[1]
+        bt_min=temp_range[0]
+        bt_max=temp_range[1]
+        post_val=[['botzwann','.True.'],['boltz_kmesh',boltz_kmesh],['boltz_relax_time',btau],
+                  ['boltz_mu_min',bmu_min],['boltz_mu_max',bmu_max],['boltz_mu_step',bmu_step],
+                  ['boltz_temp_min',bt_min],['boltz_temp_max',bt_max],['boltz_temp_step',bt_step]]
+        post_strings=win_strings(post_val,'post')
+    else:
+        post_strings=''
     k_path_strings=get_k_point_path()
     unit_cell_strings='begin unit_cell_cart\nbohr\n'+cell_parameter_stream(axis,deg)+'end unit_cell_cart\n\n'
     atom_strings='begin atoms_frac\n'+atom_position(atom,atomic_position)+'end atoms_frac\n\n'
@@ -848,7 +884,7 @@ def make_win():
     k_point_strings='begin kpoints\n'+k_cube_stream(k_mesh_wannier,F,T)+'end kpoints\n'
 
     fname='%s.win'%prefix
-    fstream=(num_strings+dis_strings+plot_strings+k_path_strings+unit_cell_strings
+    fstream=(num_strings+dis_strings+plot_strings+post_strings+k_path_strings+unit_cell_strings
              +atom_strings+prj_strings+k_grid_strings+k_point_strings)
     write_file(fname,fstream)
 
