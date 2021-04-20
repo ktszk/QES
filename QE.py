@@ -78,11 +78,11 @@ sw_post_wan =T                          #calc postwan process
 sw_restart = T                          #switch restart tag or not
 sw_opt = F                              #switch of optimaization
 #=====================pw_parameters================================
-k_mesh_scf = [8,8,8]                    #k mesh for DFT calc
+k_mesh_scf = [10,10,10]                 #k mesh for DFT calc
 k_mesh_bands = 20                       #k mesh for bands calc
 k_mesh_wannier = [8,8,8]                #k mesh for wannierize
-ecut = 60.0                             #cut off energy of pw basis
-ec_rho = 800                            #cut off energy of density
+ecut = 40.0                             #cut off energy of pw basis
+#ec_rho = 800                            #cut off energy of density
 (e_conv, f_conv) = (1.0e-5, 1.0e-4)     #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv) = (1.0e-8, 1.0e-8) #threshold of convergence on scf,nscf cycles
 elec_step = 200                         #threthold of scf cycle
@@ -111,22 +111,22 @@ q_mesh_dos = 8                          #q mesh for phonon dos calc
 ph_conv = 1.0e-14                       #threshold of energy's convergence for phonon
 amix = 0.7                              #mixing rate for ph scf default=0.7
 maxiter_ph = 100                        #max iteration default=100
-pband_win = [0, 2000]                   #energy range of .ps file
+pband_win = [0, 200]                    #energy range of .ps file
 sw_ep = F                               #swich to calc. e-p interaction or not
 qnum = 10                               #number of irreducible q points
 sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
-nwann = 1                               #number of wannier basis
-dis_win = [-30.00, 30.00]               #max(min)_window, range of sub space energy
-frz_win = [-0.0, 0.0]                   #froz_window dp22
-projection = [('H','s')]                #projections, initial funcution of wannier
+nwann = 12                              #number of wannier basis
+dis_win = [-10.00, 15.00]               #max(min)_window, range of sub space energy
+frz_win = [-10.0, 6.0]                   #froz_window dp22
+projection = [('Ga','p'),('N','p')]     #projections, initial funcution of wannier
 sw_fs_plot = F                          #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
 unk = F                                 #Bloch(Wannier)_func
 uwrite = F                              #output unitary matrix for bloch to wannier
 #=====================postwan_parameters===========================
-#---------------------Boltz_wann-----------------------------------
+#---------------------Bolz_wann-----------------------------------
 boltz_kmesh=40                          #k-mesh size of boltzwann
 btau=1                                  #relaxation time of boltwann
 mu_range=[0.,0.]                        #mu range of boltzwann
@@ -528,8 +528,8 @@ def k_line_stream(k_num,k_list):
         ks=kb[1]
         kp=[(kaa-kbb)*dk for kaa,kbb in zip(ka[1],kb[1])]
         for i in range(k_num):
-            k_string=k_string+'%9.6f %9.6f %9.6f'%(ks[0]+kp[0]*i,ks[1]+kp[1]*i,ks[2]+kp[2]*i)+wt+'\n'
-    k_string=k_string+'%9.6f %9.6f %9.6f'%tuple(k_list[-1][1])+wt+'\n'
+            k_string=k_string+'%11.8f %11.8f %11.8f'%(ks[0]+kp[0]*i,ks[1]+kp[1]*i,ks[2]+kp[2]*i)+wt+'\n'
+    k_string=k_string+'%11.8f %11.8f %11.8f'%tuple(k_list[-1][1])+wt+'\n'
     return k_string
 
 def k_cube_stream(k_num,w_sw,sw_wan):
@@ -870,7 +870,7 @@ def make_win():
         bmu_max=ef+mu_range[1]
         bt_min=temp_range[0]
         bt_max=temp_range[1]
-        post_val=[['botzwann','.True.'],['boltz_kmesh',boltz_kmesh],['boltz_relax_time',btau],
+        post_val=[['boltzwann','.True.'],['boltz_kmesh',boltz_kmesh],['boltz_relax_time',btau],
                   ['boltz_mu_min',bmu_min],['boltz_mu_max',bmu_max],['boltz_mu_step',bmu_step],
                   ['boltz_temp_min',bt_min],['boltz_temp_max',bt_max],['boltz_temp_step',bt_step]]
         post_strings=win_strings(post_val,'post')
