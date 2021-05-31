@@ -29,6 +29,7 @@ ithreads_num = 0                        #number of image for ph.x
 (start_q, last_q)=(0, 0)                #start and end of q to calculate in ph.x
 sw_run = F                              #switch of execute DFT calculation or not
 sw_mpi = T                              #switch of MPI calculation
+from_poscar=False
 #======================lattice parameters==========================
 aa=3.189                                #lattice parameter a
 ab=aa                                   #lattice parameter b
@@ -42,6 +43,7 @@ gamma=120.                              #lattice angle gamma
 sw_celldm = F                            #use celldm(1) if ibrav==0
 #cry_ax[]                                #crystal axes if you use ibrav==0
 #klist=[]                                #if you choose your own klist, write it here.
+#kbrav=4                                 #select build-in klist when from_poscar=True
 #=================Crystal structure & conditions===================
 prefix='GaN'                            #material name (or job name)
 space=186                               #space group
@@ -49,7 +51,7 @@ atom=['Ga','N']                         #Elements Name
 atomic_position=[[[1./3., 2./3., 0.],[2./3., 1./3., .5]],
                  [[1./3., 2./3., 3./8.],[2./3., 1./3., 7./8.]]]
 #------------------------------------------------------------------
-ibrav=3                                 #brave lattice type  
+ibrav=4                                 #brave lattice type  
 type_xc='pbesol'                        #type of exchange correlation functional
 pot_kind='kjpaw_psl.1.0.0'
 pot_type=['dn','n']                     #psede potential name
@@ -203,20 +205,6 @@ if args.o:
     sw_opt=True
 if args.e:
     sw_epw=True
-try: #detect type_xc
-    type_xc
-except NameError:
-    type_xc='pbe'
-if sw_so or sw_apw:
-    txc='rel-'+type_xc if sw_so else type_xc
-    pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc 
-    #pseude_dir='/home/usr2/h70252j/UPF/%s/'%txc
-else:
-    txc=type_xc
-    pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
-    #pseude_dir='/home/usr2/h70252j/UPF/'
-UPF=['%s.%s-'%(at[:2],txc)+pp+'-'+pot_kind+'.UPF' for pp, at in zip(pot_type,atom)]
-
 try:
     mpiopt
 except NameError:
@@ -316,9 +304,30 @@ except NameError:
                     num_brav=14
         ibrav=num_brav
 
-try: #detect k_list
-    k_list
-except NameError: #common k-points list
+if sw_fs_plot:
+    try: #detect fermi_mesh
+        fermi_mesh
+    except NameError:
+        fermi_mesh=100
+#==========================functions===============================
+def read_poscar(fname='POSCAR'):
+    f=open(fname,'r')
+    data=f.readlines()
+    a=float(data[1])
+    cry_ax0=np.array([[float(d) for d in dd.strip().split()] for dd in data[2:5]])
+    axis=a*np.sqrt((abs(cry_ax0)**2).sum(axis=1))
+    cry_ax=a*cry_ax0/axis
+    atom=data[5].strip().split()
+    na=[int(a) for a in data[6].strip().split()]
+    atomic_position=[]
+    cons=8
+    for i in na:
+        tmp=[[float(d) for d in dl.strip().split()] for dl in data[cons:cons+i]]
+        atomic_position.append(tmp)
+        cons=cons+i
+    return(axis,cry_ax,atom,atomic_position)
+
+def generate_klist(num_brav):
     if num_brav==1: #simple cube
         k_list=[['R',[.5,.5,0.]],['G',[0.,0.,0.]],
                 ['X',[.5,0.,0.]],['M',[.5,.5,0.]],
@@ -366,13 +375,8 @@ except NameError: #common k-points list
     else: #monocli
         k_list=[['G',[0.,0.,0.]],['X',[.5,0.,0.]],['M',[.5,.5,0.]],
                 ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
+    return k_list
 
-if sw_fs_plot:
-    try: #detect fermi_mesh
-        fermi_mesh
-    except NameError:
-        fermi_mesh=100
-#==========================functions===============================
 def write_file(name,stream):
     f=open(name,'w')
     f.write(stream)
@@ -1145,6 +1149,33 @@ def main(prefix):
                 date()
 
 if __name__=="__main__":
+    if from_poscar:
+        axis,cry_ax,atom,atomic_position=read_poscar()
+        ibrav=0
+        num_brav=0
+        try:
+            kbrav
+        except NameError:
+            kbrav=1
+    else:
+        kbrav=num_brav
+    try: #detect type_xc
+        type_xc
+    except NameError:
+        type_xc='pbe'
+    if sw_so or sw_apw:
+        txc='rel-'+type_xc if sw_so else type_xc
+        pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
+        #pseude_dir='/home/usr2/h70252j/UPF/%s/'%txc
+    else:
+        txc=type_xc
+        pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
+        #pseude_dir='/home/usr2/h70252j/UPF/'
+    UPF=['%s.%s-'%(at[:2],txc)+pp+'-'+pot_kind+'.UPF' for pp, at in zip(pot_type,atom)]
+    try: #detect k_list
+        k_list
+    except NameError:
+        k_list=generate_klist(kbrav)
     main(prefix)
 
 #==============================================================================#

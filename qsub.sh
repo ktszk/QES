@@ -20,15 +20,16 @@ sw_scf=0
 sw_band=0
 sw_pdos=0
 sw_wan=0
+sw_post_wan=1
 sw_ph=0
 sw_post_ph=0
-sw_epw=1
+sw_epw=0
 sw_opt=0
 
 ncore=16
 npool=4
-nbnd=1
-mat=GaN
+nbnd=0
+mat=Bi
 
 if [ $nbnd -gt 0 ] ; then
   npband=-bgrp $nbnd
@@ -52,11 +53,15 @@ if [ $sw_band -eq 1 ] ; then
 fi
 
 if [ $sw_wan -eq 1 ] ; then
-  python QE.py -wan
+  #python QE.py -wan
   mpirun -np $ncore pw.x -npool $npool $npband <$mat.nscf>$mat.nscf.out
   wannier90.x -pp $mat
   mpirun -np $ncore pw2wannier90.x<$mat.pw2wan>$mat.pw2wan.out
   wannier90.x $mat
+fi
+
+if [ $sw_post_wan -eq 1 ] ; then
+  mpirun -np $ncore postw90.x $mat
 fi
 
 if [ $sw_ph -eq 1 ] ; then
