@@ -324,7 +324,7 @@ def read_poscar(fname='POSCAR'):
     for i in na:
         tmp=[[float(d) for d in dl.strip().split()] for dl in data[cons:cons+i]]
         atomic_position.append(tmp)
-        cons=cons+i
+        cons+=i
     return(axis,cry_ax,atom,atomic_position)
 
 def generate_klist(num_brav):
@@ -427,8 +427,8 @@ def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
         form='%12s = '
     fstring='&%s\n'%obj_name
     for vc in var_list:
-        fstring=fstring+form%vc+str(val_dic[vc])+'\n'
-    fstring=fstring+'/\n'
+        fstring+=form%vc+str(val_dic[vc])+'\n'
+    fstring+='/\n'
     return fstring
 
 def atom_position(atom,atomic_position):
@@ -439,7 +439,7 @@ def atom_position(atom,atomic_position):
     atom_string=''
     for i,at in enumerate(atom):
         for ap in aposition[i]:
-            atom_string=atom_string+tmp%tuple([at]+ap)
+            atom_string+=tmp%tuple([at]+ap)
 
     return atom_string
 
@@ -532,8 +532,8 @@ def k_line_stream(k_num,k_list):
         ks=kb[1]
         kp=[(kaa-kbb)*dk for kaa,kbb in zip(ka[1],kb[1])]
         for i in range(k_num):
-            k_string=k_string+'%11.8f %11.8f %11.8f'%(ks[0]+kp[0]*i,ks[1]+kp[1]*i,ks[2]+kp[2]*i)+wt+'\n'
-    k_string=k_string+'%11.8f %11.8f %11.8f'%tuple(k_list[-1][1])+wt+'\n'
+            k_string+='%11.8f %11.8f %11.8f'%(ks[0]+kp[0]*i,ks[1]+kp[1]*i,ks[2]+kp[2]*i)+wt+'\n'
+    k_string+='%11.8f %11.8f %11.8f'%tuple(k_list[-1][1])+wt+'\n'
     return k_string
 
 def k_cube_stream(k_num,w_sw,sw_wan):
@@ -547,7 +547,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
         for i in range(k_num):
             for j in range(k_num):
                 for k in range(k_num):
-                    k_string=k_string+'  %10.8f  %10.8f  %10.8f'%(dk*i,dk*j,dk*k)+wst
+                    k_string+='  %10.8f  %10.8f  %10.8f'%(dk*i,dk*j,dk*k)+wst
     elif isinstance(k_num,list):
         if len(k_num)==1:
             dk=[1./knum[0]]*3
@@ -571,7 +571,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
         for i in range(kn[0]):
             for j in range(kn[1]):
                 for k in range(kn[2]):
-                    k_string=k_string+'  %10.8f  %10.8f  %10.8f'%(dk[0]*i,dk[1]*j,dk[2]*k)+wst
+                    k_string+='  %10.8f  %10.8f  %10.8f'%(dk[0]*i,dk[1]*j,dk[2]*k)+wst
     else:
         print('Please input list or int into k_point ')
         exit()
@@ -583,10 +583,10 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     def atomic_parameters_stream(atom,atomic_position,UPF):
         atom_string='\nATOMIC_SPECIES\n'
         for at,up in zip(atom,UPF):
-            atom_string=atom_string+' %-2s %11.7f  %s\n'%(at,mass[at[:2]],up)
-        atom_string=atom_string+'\nATOMIC_POSITIONS crystal\n'
-        atom_string=atom_string+atom_position(atom,atomic_position)
-        atom_string=atom_string+'\n'
+            atom_string+=' %-2s %11.7f  %s\n'%(at,mass[at[:2]],up)
+        atom_string+='\nATOMIC_POSITIONS crystal\n'
+        atom_string+=atom_position(atom,atomic_position)
+        atom_string+='\n'
         return atom_string
 
     (fext,convthr) =(('nscf' if calc=='nscf' else 'bands',nscf_conv) 
@@ -604,7 +604,7 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                  'forc_conv_thr':w_conv(f_conv),'nstep':nstep,'tstress':'.True.','tprnfor':'.True.',
                  'wf_collect':TorF(wf_collect),'verbosity':'high'}
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
-    fstream=fstream+fs_control
+    fstream+=fs_control
 
     var_system=['ibrav','nat','ntyp','occupations','smearing','degauss','nbnd','ecutwfc']
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
@@ -613,60 +613,60 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
                 'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.','nspin':nspin,
                 'lda_plus_u':'.True.','lda_plus_u_kind':1}
     if sw_ep:
-        var_system=var_system+['la2f']
+        var_system+=['la2f']
     if sw_nosym:
-        var_system=var_system+['nosym','noinv']
+        var_system+=['nosym','noinv']
     try:
         ec_rho
-        var_system=var_system+['ecutrho']
+        var_system+=['ecutrho']
         val_system.update({'ecutrho':ec_rho})
     except NameError:
         pass
     if sw_so:
-        var_system=var_system+['noncolin','lspinorb']
+        var_system+=['noncolin','lspinorb']
     if sw_vdW:
         if vdW_corr=='vdW-DF':
             if sw_so:
                 print('We cannot use vdW-DF with noncllinear spin')
             else:
-                var_system=var_system+['input_dft']
+                var_system+=['input_dft']
                 val_system.update({'input_dft':"'vdW-DF'"})
         elif vdW_corr=='rVV10':
             if sw_so:
                 print('We cannot use rVV10 with noncllinear spin')
             else:
-                var_system=var_system+['input_dft']
+                var_system+=['input_dft']
                 val_system.update({'input_dft':"'rVV10'"})
         else:
-            var_system=var_system+['vdw_corr']
+            var_system+=['vdw_corr']
             val_system.update({'vdw_corr':"'%s'"%vdW_corr})
     if sw_spn_pol:
-        var_system=var_system+['nspin']
+        var_system+=['nspin']
         if len(mmom)!=0:
             for i,m in enumerate(mmom):
-                var_system=var_system+['starting_magnetization(%d)'%(i+1)]
+                var_system+=['starting_magnetization(%d)'%(i+1)]
                 val_system.update({'starting_magnetization(%d)'%(i+1):m})
             if nspin==4:
                 if len(theta_m)!=0:
                     for i,m in enumerate(theta_m):
-                        var_system=var_system+['angle1(%d)'%(i+1)]
+                        var_system+=['angle1(%d)'%(i+1)]
                         val_system.update({'angle1(%d)'%(i+1):m})
                 if len(phi_m)!=0:
                     for i,m in enumerate(phi_m):
-                        var_system=var_system+['angle2(%d)'%(i+1)]
+                        var_system+=['angle2(%d)'%(i+1)]
                         val_system.update({'angle2(%d)'%(i+1):m})
     if sw_ldaU:
-        var_system=var_system+['lda_plus_u']
+        var_system+=['lda_plus_u']
         if sw_so or sum(lda_J)!=0:
-            var_system=var_system+['lda_plus_u_kind']
+            var_system+=['lda_plus_u_kind']
         for i,U in enumerate(lda_U[:len(atom)]):
             tmp='Hubbard_U(%d)'%(i+1)
-            var_system=var_system+[tmp]
+            var_system+=[tmp]
             val_system.update({tmp:U})
         if sum(lda_J)!=0:
             for i,J in enumerate(lda_J[:len(atom)]):
                 tmp='Hubbard_J(1,%d)'%(i+1)
-                var_system=var_system+[tmp]
+                var_system+=[tmp]
                 val_system.update({tmp:J})
     if ibrav!=0:
         """
@@ -679,74 +679,74 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
               = 12~13: Monoclinic (12,-12: P, 13: B)
               = 14: Triclinic
         """
-        var_system=var_system+['celldm(1)'] 
+        var_system+=['celldm(1)'] 
         val_system.update({'celldm(1)':round(axis[0]*ibohr,sig_fig)})
         if ibrav in {4,6,7,8,9,10,11,12,13,14,-12,-13}:
             if ibrav in {8,9,10,11,12,13,14,-12}:
-                var_system=var_system+['celldm(2)']
+                var_system+=['celldm(2)']
                 val_system.update({'celldm(2)':round(axis[1]/axis[0],sig_fig)})
-            var_system=var_system+['celldm(3)']
+            var_system+=['celldm(3)']
             val_system.update({'celldm(3)':round(axis[2]/axis[0],sig_fig)})
             if ibrav in {12,13}:
-                var_system=var_system+['celldm(4)']
+                var_system+=['celldm(4)']
                 val_system.update({'celldm(4)':round(np.cos(np.pi*deg[2]/180.),sig_fig)})
             elif ibrav in {-12,-13}:
-                var_system=var_system+['celldm(5)']
+                var_system+=['celldm(5)']
                 val_system.update({'celldm(5)':round(np.cos(np.pi*deg[1]/180.),sig_fig)})
             elif ibrav==14:
-                var_system=var_system+['celldm(4)','celldm(5)','celldm(6)']
+                var_system+=['celldm(4)','celldm(5)','celldm(6)']
                 val_system.update({'celldm(4)':round(np.cos(np.pi*deg[0]/180.),sig_fig),
                                    'celldm(5)':round(np.cos(np.pi*deg[1]/180.),sig_fig),
                                    'celldm(6)':round(np.cos(np.pi*deg[2]/180.),sig_fig)})
         elif ibrav in (5,-5):
-            var_system=var_system+['celldm(4)']
+            var_system+=['celldm(4)']
             val_system.update({'celldm(4)':round(np.cos(np.pi*deg[2]/180.),sig_fig)})
     else:
         if sw_celldm:
-            var_system=var_system+['celldm(1)']
+            var_system+=['celldm(1)']
             val_system.update({'celldm(1)':round(axis[0]*ibohr,sig_fig)})
     fs_system=make_fstring_obj('system',var_system,val_system,'pw')
-    fstream=fstream+fs_system
+    fstream+=fs_system
 
     var_electrons=['diagonalization','conv_thr']
     val_electrons={'diagonalization':"'david'",'conv_thr':w_conv(convthr),'scf_must_converge':'.False.'}
     try:
         elec_step
-        var_electrons=var_electrons+['electron_maxstep']
+        var_electrons+=['electron_maxstep']
         val_electrons.update({'electron_maxstep':elec_step})
     except NameError:
         pass
     if sw_opt:
         if scf_mustnot_conv:
-            var_electrons=var_electrons+['scf_must_converge']
+            var_electrons+=['scf_must_converge']
     fs_electrons=make_fstring_obj('electrons',var_electrons,val_electrons,'pw')
-    fstream=fstream+fs_electrons
+    fstream+=fs_electrons
 
     if calc in {'relax','md','vc-relax','vc-md'}:
         var_ions=[]
         val_ions={}
         fs_ions=make_fstring_obj('ions',var_ions,val_ions,'pw')
-        fstream=fstream+fs_ions
+        fstream+=fs_ions
 
     if calc in {'vc-relax','vc-md'}:
         var_cell=[]
         val_cell={}
         fs_cell=make_fstring_obj('cell',var_cell,val_cell,'pw')
-        fstream=fstream+fs_cell
+        fstream+=fs_cell
 
     fs_atomparam=atomic_parameters_stream(atom,atomic_position,UPF)
-    fstream=fstream+fs_atomparam
+    fstream+=fs_atomparam
     if ibrav==0:
         fs_cellparam='CELL_PARAMETERS\n'+cell_parameter_stream(axis,deg)+'\n'
-        fstream=fstream+fs_cellparam
+        fstream+=fs_cellparam
 
-    fstream=fstream+'K_POINTS %s\n'%('CRYSTAL' if kconfig else 'AUTOMATIC')
+    fstream+='K_POINTS %s\n'%('CRYSTAL' if kconfig else 'AUTOMATIC')
     if kconfig:
         if calc=='nscf':
             fs_kl_param=k_cube_stream(k_mesh_wannier,T,F)
         else:
             fs_kl_param=k_line_stream(k_mesh_bands,k_list)
-        fstream=fstream+fs_kl_param
+        fstream+=fs_kl_param
     else:
         if isinstance(k_mesh_scf,list):
             if len(k_mesh_scf)==3:
@@ -759,7 +759,7 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
             k_mesh=[k_mesh_scf]*3
         else:
             print('k_mesh_scf is list(datatype=int) or int only')
-        fstream=fstream+'%d %d %d %d %d %d\n'%tuple(k_mesh+[0]*3)
+        fstream+='%d %d %d %d %d %d\n'%tuple(k_mesh+[0]*3)
     write_file(fname,fstream)
 
 def make_dos_in():
@@ -771,7 +771,7 @@ def make_dos_in():
                'Emin':edos_win[0]+ef,'Emax':edos_win[1]+ef,'DeltaE':de,'ngauss':1,'degauss':2*dgs}
     fstream=''
     fs_dos=make_fstring_obj('dos',var_dos,val_dos,'dos')
-    fstream=fstream+fs_dos
+    fstream+=fs_dos
     write_file(fname,fstream)
 
 def make_prjwfc_in():
@@ -783,7 +783,7 @@ def make_prjwfc_in():
              'pawproj':'.Ture.'}
     fstream=''
     fs_prj=make_fstring_obj('projwfc',var_prj,val_prj,'prjwfc')
-    fstream=fstream+fs_prj
+    fstream+=fs_prj
     write_file(fname,fstream)
 
 def make_bands_in():
@@ -803,7 +803,7 @@ def make_pw2wan_in():
     val_bands={'outdir':"'./'",'prefix':"'%s'"%prefix,'seedname':"'%s'"%prefix,
                'spin_component':"'none'",'write_unk': TorF(unk)}
     fs_bands=make_fstring_obj('inputpp',var_bands,val_bands,'pw2wan')
-    fstream=fstream+fs_bands
+    fstream+=fs_bands
     write_file(fname,fstream)
 
 def make_win():
@@ -819,22 +819,22 @@ def make_win():
             form='%-12s = '
         strings=''
         for vs in values:
-            strings=strings+form%vs[0]+format_val(vs[1])+'\n'
-        strings=strings+'\n'
+            strings+=form%vs[0]+format_val(vs[1])+'\n'
+        strings+='\n'
         return strings
     def get_k_point_path():
         p_name=lambda x: 'GAMMA' if x=='G' else x
         strings='begin Kpoint_Path\n'
         for kl1,kl2 in zip(k_list,k_list[1:]):
-            strings=strings+'%-5s'%p_name(kl1[0])+' %5.2f %5.2f %5.2f  '%tuple(kl1[1])
-            strings=strings+'%-5s'%p_name(kl2[0])+' %5.2f %5.2f %5.2f\n'%tuple(kl2[1])
-        strings=strings+'end Kpoint_Path\n\n'
+            strings+='%-5s'%p_name(kl1[0])+' %5.2f %5.2f %5.2f  '%tuple(kl1[1])
+            strings+='%-5s'%p_name(kl2[0])+' %5.2f %5.2f %5.2f\n'%tuple(kl2[1])
+        strings+='end Kpoint_Path\n\n'
         return strings
     def get_projection():
         strings='begin projections\n'
         for prj in projection:
-            strings=strings+'%s:%s\n'%prj
-        strings=strings+'end projections\n\n'
+            strings+='%s:%s\n'%prj
+        strings+='end projections\n\n'
         return strings
     def get_grid(k_num):
         if isinstance(k_num,int):
@@ -901,20 +901,20 @@ def make_ph_in():
     var_inputph=['tr2_ph','alpha_mix','niter_ph','prefix','fildyn','trans',
                  'ldisp','lqdir','recover','outdir']
     if ithreads_num==0:
-        var_inputph=var_inputph+['fildvscf']
+        var_inputph+=['fildvscf']
     if sw_ep:
-        var_inputph=var_inputph+['electron_phonon']
+        var_inputph+=['electron_phonon']
     if start_q!=0:
-        var_inputph=var_inputph+['start_q']
+        var_inputph+=['start_q']
     if last_q!=0 and start_q<=last_q:
-        var_inputph=var_inputph+['last_q']
-    var_inputph=var_inputph+['nq1','nq2','nq3']
+        var_inputph+=['last_q']
+    var_inputph+=['nq1','nq2','nq3']
     val_inputph={'tr2_ph':w_conv(ph_conv),'prefix':"'%s'"%prefix,'fildyn':"'%s'"%fildyn,'fildvscf':fildvscf,
                  'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','lqdir':'.True.','recover':recover,
                  'electron_phonon':ep_setting,'alpha_mix':amix,'niter_ph':maxiter_ph,
                  'start_q':start_q,'last_q':last_q,'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
     fs_inputph=make_fstring_obj('inputph',var_inputph,val_inputph,'ph')
-    fstream=fstream+fs_inputph
+    fstream+=fs_inputph
     write_file(fname,fstream)
 
 def make_q2r():
@@ -922,9 +922,9 @@ def make_q2r():
     fstream=''
     inputq2r=['fildyn','flfrc']
     if sw_ep:
-        inputq2r=inputq2r+['la2F']
+        inputq2r+=['la2F']
     fs_input=make_fstring_obj('input',inputq2r,{'fildyn':"'%s'"%(fildyn+dxml),'flfrc':"'%s'"%flfrc,'la2F':'.True.'},'q2r')
-    fstream=fstream+fs_input
+    fstream+=fs_input
     write_file(fname,fstream)
 
 def make_matdyn(phband):
@@ -948,14 +948,14 @@ def make_matdyn(phband):
     fname='%s.%s'%(prefix,fext)
     fstream=''
     fs_input=make_fstring_obj('input',input_list,input_val,'matdyn')
-    fstream=fstream+fs_input
+    fstream+=fs_input
     if phband:
         mat=get_cr_mat(num_brav)
         avec=mat*axis
         alat=(np.sqrt(sum(avec[0]**2)) if ibrav==0 else axis[0])
         q_list=[[kl[0],list(np.linalg.inv(mat*axis/alat).dot(kl[1]))] for kl in k_list]
         fs_qlist=k_line_stream(q_mesh_bands,q_list)
-        fstream=fstream+fs_qlist
+        fstream+=fs_qlist
     write_file(fname,fstream)
 
 def make_plotband_in(mode,win):
@@ -1008,9 +1008,9 @@ def make_epw():
     var_epw=['prefix']
     for i,atm in enumerate(atom):
         tmp='mass(%d)'%(i+1)
-        var_epw=var_epw+[tmp]
+        var_epw+=[tmp]
         val_epw.update({tmp:mass[atm]})
-    var_epw=(var_epw+['outdir','dvscf_dir']+['nk%d'%(i+1) for i in range(3)]+['nq%d'%(i+1) for i in range(3)]
+    var_epw+=(['outdir','dvscf_dir']+['nk%d'%(i+1) for i in range(3)]+['nq%d'%(i+1) for i in range(3)]
              +['nkf%d'%(i+1) for i in range(3)]+['nqf%d'%(i+1) for i in range(3)])
     fstream=make_fstring_obj('inputepw',var_epw,val_epw,'epw')
     write_file(fname,fstream)
