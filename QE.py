@@ -1006,16 +1006,17 @@ def make_epw():
     fname='%s.epw'%prefix
     dvscfdir='../save'
     val_epw={'prefix':"'%s'"%prefix,'outdir':"'./'",'dvscf_dir':"'%s'"%dvscfdir,
+             'ep_coupling':'.True.','elph':'.True.',
              'nk1':k_mesh_wannier[0],'nk2':k_mesh_wannier[1],'nk3':k_mesh_wannier[2],
              'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2],
              'nkf1':epw_k_mesh[0],'nkf2':epw_k_mesh[1],'nkf3':epw_k_mesh[2],
              'nqf1':epw_q_mesh[0],'nqf2':epw_q_mesh[1],'nqf3':epw_q_mesh[2]}
     var_epw=['prefix']
     for i,atm in enumerate(atom):
-        tmp='mass(%d)'%(i+1)
+        tmp='amass(%d)'%(i+1)
         var_epw+=[tmp]
         val_epw.update({tmp:mass[atm]})
-    var_epw+=(['outdir','dvscf_dir']+['nk%d'%(i+1) for i in range(3)]+['nq%d'%(i+1) for i in range(3)]
+    var_epw+=(['outdir','ep_coupling','elph','dvscf_dir']+['nk%d'%(i+1) for i in range(3)]+['nq%d'%(i+1) for i in range(3)]
              +['nkf%d'%(i+1) for i in range(3)]+['nqf%d'%(i+1) for i in range(3)])
     fstream=make_fstring_obj('inputepw',var_epw,val_epw,'epw')
     write_file(fname,fstream)
@@ -1147,6 +1148,7 @@ def main(prefix):
                 dvscf_dir='' if i==0 else prefix+'.q_'+qn+'/'
                 shutil.copy(prefix+'.dyn'+qn+dxml,'save/'+prefix+'.dyn_q'+qn)
                 shutil.copy('_ph0/'+dvscf_dir+prefix+'.dvscf1','save/'+prefix+'.dvscf_q'+qn)
+                shutil.copy('_ph0/'+dvscf_dir+prefix+'.dvscf_paw1','save/'+prefix+'.dvscf_paw_q'+qn)
         if sw_epw:
             make_epw()
             if sw_run:
