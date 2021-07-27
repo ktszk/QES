@@ -91,7 +91,9 @@ elec_step = 200                         #threthold of scf cycle
 nband = 30                              #number of bands
 nstep = 100                             #number of MD or optimization step
 dgs = 0.025                             #dispersion of k-mesh
-de = 0.1                                #delta E for dos
+de = 0.01                               #delta E for dos
+occupations='tetrahedra_opt'            #occupation setting
+#occupations='smearing'
 eband_win = [-10., 15.]                 #energy range of .ps file
 #edos_win = [-30., 15.]                  #energy range of .dos file
 wf_collect = T
@@ -114,8 +116,8 @@ ph_conv = 1.0e-14                       #threshold of energy's convergence for p
 amix = 0.7                              #mixing rate for ph scf default=0.7
 maxiter_ph = 100                        #max iteration default=100
 pband_win = [0, 200]                    #energy range of .ps file
-sw_ep = F                               #swich to calc. e-p interaction or not
-qnum = 10                               #number of irreducible q points
+sw_ep = T                               #swich to calc. e-p interaction or not we cannot obtain e-p int. in nonclin.
+qnum = 10                               #number of q smearing
 sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
@@ -177,7 +179,7 @@ fildvscf="'dvscf'"
 fildyn='%s.dyn'%prefix
 flfrc='%s.fc'%prefix
 recover=TorF(sw_restart)
-dxml='.xml' if sw_so else ''
+dxml='' #'.xml' if sw_so else '' #some old version add .xml when with soc phonon calculation
 #==============serch several variables and initialize if can't find
 parser=argparse.ArgumentParser(prog='QE.py',description='input file generator for Quantum Espresso')
 parser.add_argument("-s","-scf",help='generate scf file',action='store_true')
@@ -398,7 +400,7 @@ def date():
 
 def os_and_print(command):
     print(command)
-    subprocess.call(command,shell=True)
+    subprocess.run(command,shell=True)
 
 def get_ef(name,ext):
     fname='%s.%s.out'%(name,ext)
@@ -591,7 +593,7 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
 
     (fext,convthr) =(('nscf' if calc=='nscf' else 'bands',nscf_conv) 
                      if calc in ['nscf','bands'] else ('scf',scf_conv))
-    occup=("'smearing'" if kconfig else "'tetrahedra_opt'")
+    occup=("'smearing'" if kconfig else "'%s'"%occupations)
 
     fname='%s.%s'%(prefix,fext)
     fstream=''
@@ -895,9 +897,10 @@ def make_win():
 def make_ph_in():
     fname='%s.ph'%prefix
     fstream='%s\n'%prefix
-    #ep_setting="'interpolated'"
-    ep_setting="'lambda_tetra'" #calc e-p int. using opt_tetrahedra
-
+    if occupations=='tetrahedra_opt':
+        ep_setting="''" #initial setting in calc. of e-p int. using opt_tetrahedrn
+    else:
+        ep_setting="'interpolated'"
     var_inputph=['tr2_ph','alpha_mix','niter_ph','prefix','fildyn','trans',
                  'ldisp','lqdir','recover','outdir']
     if ithreads_num==0:
@@ -929,22 +932,21 @@ def make_q2r():
 
 def make_matdyn(phband):
     asr="'crystal'"
+    input_list=['flfrc','asr','dos']
     if phband:
         fext='freq'
         dos=False
-        input_list=['flfrc','asr','dos']
-        input_val={'flfrc':"'%s'"%(flfrc+dxml),'asr':asr,'dos':'.False.'}
+        input_val={'flfrc':"'%s'"%(flfrc+dxml),'asr':asr,'dos':'.False.','la2F':'.True.'}
     else:
         fext='matdyn'
         dos=True
         nk1=q_mesh_dos
         nk2=q_mesh_dos
         nk3=q_mesh_dos
-        input_list=['flfrc','asr','dos']
-        if sw_ep:
-            input_list=input_list+['la2F']
         input_list=input_list+['nk1','nk2','nk3']
         input_val={'flfrc':"'%s'"%(flfrc+dxml),'asr':asr,'dos':'.True.','la2F':'.True.','nk1':nk1,'nk2':nk2,'nk3':nk3}
+    if sw_ep:
+        input_list=input_list+['la2F']
     fname='%s.%s'%(prefix,fext)
     fstream=''
     fs_input=make_fstring_obj('input',input_list,input_val,'matdyn')
