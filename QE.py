@@ -118,6 +118,7 @@ maxiter_ph = 100                        #max iteration default=100
 pband_win = [0, 200]                    #energy range of .ps file
 sw_ep = T                               #swich to calc. e-p interaction or not we cannot obtain e-p int. in nonclin.
 qnum = 10                               #number of q smearing
+sw_qshift = T                           #if calc. lambda with opt_tetra, make this T
 sw_gen_a2f = T                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
@@ -897,24 +898,26 @@ def make_win():
 def make_ph_in():
     fname='%s.ph'%prefix
     fstream='%s\n'%prefix
-    if occupations=='tetrahedra_opt':
-        ep_setting="''" #initial setting in calc. of e-p int. using opt_tetrahedrn
-    else:
-        ep_setting="'interpolated'"
     var_inputph=['tr2_ph','alpha_mix','niter_ph','prefix','fildyn','trans',
                  'ldisp','lqdir','recover','outdir']
     if ithreads_num==0:
         var_inputph+=['fildvscf']
     if sw_ep:
-        var_inputph+=['electron_phonon']
+        if occupations=='tetrahedra_opt':
+            ep_setting="''" #initial setting in calc. of e-p int. using opt_tetrahedrn
+            if sw_qshift:
+                var_inputph+=['lshift_q']
+        else:
+            ep_setting="'interpolated'"
+            var_inputph+=['electron_phonon']
     if start_q!=0:
         var_inputph+=['start_q']
     if last_q!=0 and start_q<=last_q:
         var_inputph+=['last_q']
     var_inputph+=['nq1','nq2','nq3']
     val_inputph={'tr2_ph':w_conv(ph_conv),'prefix':"'%s'"%prefix,'fildyn':"'%s'"%fildyn,'fildvscf':fildvscf,
-                 'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','lqdir':'.True.','recover':recover,
-                 'electron_phonon':ep_setting,'alpha_mix':amix,'niter_ph':maxiter_ph,
+                 'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','lqdir':'.True.','lshift_q':'.True.',
+                 'recover':recover,'electron_phonon':ep_setting,'alpha_mix':amix,'niter_ph':maxiter_ph,
                  'start_q':start_q,'last_q':last_q,'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
     fs_inputph=make_fstring_obj('inputph',var_inputph,val_inputph,'ph')
     fstream+=fs_inputph
