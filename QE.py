@@ -44,6 +44,12 @@ sw_celldm = F                            #use celldm(1) if ibrav==0
 #cry_ax[]                                #crystal axes if you use ibrav==0
 #klist=[]                                #if you choose your own klist, write it here.
 #kbrav=4                                 #select build-in klist when from_poscar=True
+#for supercell calculation
+sw_sc=False
+sc_size=[3,4,2]
+imp_atom=['Eu']
+imp_position=[[['Ga',0]]]
+imp_pot_type=['spdn']
 #=================Crystal structure & conditions===================
 prefix='GaN'                            #material name (or job name)
 space=186                               #space group
@@ -52,7 +58,7 @@ atomic_position=[[[1./3., 2./3., 0.],[2./3., 1./3., .5]],
                  [[1./3., 2./3., 3./8.],[2./3., 1./3., 7./8.]]]
 #------------------------------------------------------------------
 ibrav=4                                 #brave lattice type  
-type_xc='pbesol'                        #type of exchange correlation functional
+type_xc='pbe'                        #type of exchange correlation functional
 pot_kind='kjpaw_psl.1.0.0'
 pot_type=['dn','n']                     #psede potential name
 
@@ -94,16 +100,17 @@ dgs = 0.025                             #dispersion of k-mesh
 de = 0.01                               #delta E for dos
 occupations='tetrahedra_opt'            #occupation setting
 #occupations='smearing'
+#occupations='fixed'
 eband_win = [-10., 15.]                 #energy range of .ps file
 #edos_win = [-30., 15.]                  #energy range of .dos file
-wf_collect = T
+wf_collect = T                          #collect paralleled wavefunctions or not usually T
 sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
-nspin=2                                 #spin polarized setting nonpol=1,z-axis=2,general=4
+nspin=1                                 #spin polarized setting nonpol=1,z-axis=2,general=4
 #mmom=[1,0]                              #initial spin polization
-#theta_m=[90,0]                            #initial spin angle theta (tilt for z axis)
-#phi_m=[180,0]                              #initial spin angle phi (xy plane)
+#theta_m=[90,0]                          #initial spin angle theta (tilt for z axis) use only nspin=4
+#phi_m=[180,0]                           #initial spin angle phi (xy plane) use only nspin=4
 #--------------------LDA+U parameters------------------------------
 sw_ldaU = F                             #switch LDA+U
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
@@ -116,15 +123,16 @@ ph_conv = 1.0e-14                       #threshold of energy's convergence for p
 amix = 0.7                              #mixing rate for ph scf default=0.7
 maxiter_ph = 100                        #max iteration default=100
 pband_win = [0, 200]                    #energy range of .ps file
-sw_ep = T                               #swich to calc. e-p interaction or not we cannot obtain e-p int. in nonclin.
+sw_ep = F                               #swich to calc. e-p interaction or not we cannot obtain e-p int. in nonclin.
+mpol = F                                #if material is local polarized mpol=T
 qnum = 10                               #number of q smearing
 sw_qshift = T                           #if calc. lambda with opt_tetra, make this T
-sw_gen_a2f = T                          #switch to generage a2f.dat files
+sw_gen_a2f = F                          #switch to generage a2f.dat files
 #===================Wannier_parameters=============================
 # the projections name which we can use are s,p,d,f, and sp,sp2,sp3, sp3d,sp3d2
 nwann = 12                              #number of wannier basis
 dis_win = [-10.00, 15.00]               #max(min)_window, range of sub space energy
-frz_win = [-10.0, 6.0]                   #froz_window dp22
+frz_win = [-10.0, 6.0]                  #froz_window dp22
 projection = [('Ga','p'),('N','p')]     #projections, initial funcution of wannier
 sw_fs_plot = F                          #plot Fermi surface
 fermi_mesh = 100                        #mesh of k-points in bxsf file
@@ -135,12 +143,12 @@ uwrite = F                              #output unitary matrix for bloch to wann
 boltz_kmesh=40                          #k-mesh size of boltzwann
 btau=1                                  #relaxation time of boltwann
 mu_range=[0.,0.]                        #mu range of boltzwann
-bmu_step=1                               #mu step of boltzwann
+bmu_step=1                              #mu step of boltzwann
 temp_range=[50,1000]                    #temp range of boltzwann
 bt_step=50                              #temp step size of boltzwann
 #=================EPW parameters===================================
-epw_k_mesh=[16,16,16]
-epw_q_mesh=[8,8,8]
+epw_k_mesh=[16,16,16]                   #interpolate k-mesh size for epw
+epw_q_mesh=[8,8,8]                      #interpolate q-mesh size for epw
 #=============================modules==============================
 import numpy as np
 import os, datetime, subprocess, argparse
@@ -149,7 +157,7 @@ TorF=lambda x:'.True.' if x else '.False.'
 w_conv=lambda a:'1.0E%d'%int(np.log10(a))
 #====================== physical parameters =======================
 sig_fig = 9                             #significant figure after decimal fraction
-bohr=round(0.52917721067, sig_fig)       #Bohr Radius
+bohr=round(0.52917721067, sig_fig)      #Bohr Radius
 ibohr=1.0/bohr                          #inverse of Bohr Radius
 #========================= atomic mass ============================
 #       1             2             13            14          15          16           17            18
@@ -313,6 +321,37 @@ if sw_fs_plot:
     except NameError:
         fermi_mesh=100
 #==========================functions===============================
+def gen_SC_positions(sc_size,positions):
+    sc_positions=[]
+    for pos in positions:
+        tmp=[]
+        for i in range(sc_size[2]):
+            z_slide=1./sc_size[2]
+            for p in pos:
+                for j in range(sc_size[1]):
+                    y_slide=1./sc_size[1]
+                    for k in range(sc_size[0]):
+                        x_slide=1./sc_size[0]
+                        slide=np.array([k*x_slide,j*y_slide,i*z_slide])
+                        tmp.append(list(p*np.array([x_slide,y_slide,z_slide])+slide))
+        sc_positions.append(tmp)
+    try:
+        imp_atom
+        imp_position
+        if len(imp_atom)!=0 and len(imp_atom)==len(imp_position):
+            new_imp_pos=[]
+            for pos in imp_position:
+                tmp=[]
+                for ps in pos:
+                    for i,at in enumerate(atom):
+                        if at==ps[0]:
+                            tmp.append(sc_positions[i].pop(ps[1]))
+            new_imp_pos.append(tmp)
+        sc_positions=new_imp_pos+sc_positions
+    except NameError:
+        print('no impurity')
+    return sc_positions
+
 def read_poscar(fname='POSCAR'):
     f=open(fname,'r')
     data=f.readlines()
@@ -406,10 +445,18 @@ def os_and_print(command):
 def get_ef(name,ext):
     fname='%s.%s.out'%(name,ext)
     if os.path.exists(fname):
+        if occupations=='fixed':
+            ckstrings='lowest unoccupied level'
+            spst='(ev):'
+            spst2=''
+        else:
+            ckstrings='Fermi'
+            spst='is'
+            spst2='ev'
         for f in open(fname,'r'):
-            if f.find('Fermi')!=-1:
-                item=f.split('is')
-                it1=item[1].split('ev')
+            if f.find(ckstrings)!=-1:
+                item=f.split(spst)
+                it1=item[1].split(spst2)
                 return float(it1[0])
         else:
             print('input error from %s.%s.out\n'%(name,ext)
@@ -910,15 +957,20 @@ def make_ph_in():
         else:
             ep_setting="'interpolated'"
             var_inputph+=['electron_phonon']
+    else:
+        ep_setting=''
     if start_q!=0:
         var_inputph+=['start_q']
     if last_q!=0 and start_q<=last_q:
         var_inputph+=['last_q']
+    if start_q==1 and last_q==1 and mpol:
+        var_inputph+=['epsil']
     var_inputph+=['nq1','nq2','nq3']
     val_inputph={'tr2_ph':w_conv(ph_conv),'prefix':"'%s'"%prefix,'fildyn':"'%s'"%fildyn,'fildvscf':fildvscf,
                  'outdir':"'%s'"%outdir,'trans':'.True.','ldisp':'.True.','lqdir':'.True.','lshift_q':'.True.',
                  'recover':recover,'electron_phonon':ep_setting,'alpha_mix':amix,'niter_ph':maxiter_ph,
-                 'start_q':start_q,'last_q':last_q,'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
+                 'epsil':'.True.','start_q':start_q,'last_q':last_q,
+                 'nq1':q_mesh_dyn[0],'nq2':q_mesh_dyn[1],'nq3':q_mesh_dyn[2]}
     fs_inputph=make_fstring_obj('inputph',var_inputph,val_inputph,'ph')
     fstream+=fs_inputph
     write_file(fname,fstream)
@@ -1156,6 +1208,23 @@ def main(prefix):
                 date()
 
 if __name__=="__main__":
+    if sw_sc:
+        axis=axis*np.array(sc_size)
+        atomic_position=gen_SC_positions(sc_size,atomic_position)
+        try:
+            imp_atom
+            if len(imp_atom)!=0:
+                atom=imp_atom+atom
+                try:
+                    imp_pot_type
+                    pot_type=pot_type+imp_pot_type
+                except NameError:
+                    print('conflict atomic num')
+                    exit()
+        except NameError:
+            print('no impurity')
+    else:
+        pass
     if from_poscar:
         axis,cry_ax,atom,atomic_position=read_poscar()
         ibrav=0
