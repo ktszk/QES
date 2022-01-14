@@ -45,7 +45,7 @@ sw_celldm = F                            #use celldm(1) if ibrav==0
 #klist=[]                                #if you choose your own klist, write it here.
 #kbrav=4                                 #select build-in klist when from_poscar=True
 #for supercell calculation
-sw_sc=False
+sw_sc=True
 sc_size=[3,4,2]
 imp_atom=['Eu']
 imp_position=[[['Ga',0]]]
@@ -225,9 +225,14 @@ try:
 except NameError:
     edos_win=eband_win
 
-try: #detect brav
-    num_brav
-except NameError:
+if sw_fs_plot:
+    try: #detect fermi_mesh
+        fermi_mesh
+    except NameError:
+        fermi_mesh=100
+
+#==========================functions===============================
+def get_bravs(space,ibrav):
     if ibrav==0:
         num_brav=0
     else:
@@ -313,14 +318,8 @@ except NameError:
                         num_brav=13
                 else:
                     num_brav=14
-        ibrav=num_brav
-
-if sw_fs_plot:
-    try: #detect fermi_mesh
-        fermi_mesh
-    except NameError:
-        fermi_mesh=100
-#==========================functions===============================
+    ibrav=num_brav
+    return ibrav,num_brav
 def gen_SC_positions(sc_size,positions):
     sc_positions=[]
     for pos in positions:
@@ -1208,6 +1207,11 @@ def main(prefix):
                 date()
 
 if __name__=="__main__":
+    try: #detect k_list
+        k_list
+    except NameError:
+        ibrav,num_brav=get_bravs(space,ibrav)
+        k_list=generate_klist(num_brav)
     if sw_sc:
         axis=axis*np.array(sc_size)
         atomic_position=gen_SC_positions(sc_size,atomic_position)
@@ -1217,24 +1221,22 @@ if __name__=="__main__":
                 atom=imp_atom+atom
                 try:
                     imp_pot_type
-                    pot_type=pot_type+imp_pot_type
+                    pot_type=imp_pot_type+pot_type
                 except NameError:
                     print('conflict atomic num')
                     exit()
         except NameError:
             print('no impurity')
-    else:
-        pass
+        if sc_size[0]!=sc_size[1]:
+            if num_brav in {1,2,3,4,5,6,7}:
+                space=1
+        elif sc_size[0]!=sc_size[2]:
+            if num_brav in {1,2,3,5}:
+                space=1
     if from_poscar:
         axis,cry_ax,atom,atomic_position=read_poscar()
         ibrav=0
-        num_brav=0
-        try:
-            kbrav
-        except NameError:
-            kbrav=1
-    else:
-        kbrav=num_brav
+    ibrav,num_brav=get_bravs(space,ibrav)
     try: #detect type_xc
         type_xc
     except NameError:
@@ -1248,10 +1250,6 @@ if __name__=="__main__":
         pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
         #pseude_dir='/home/usr2/h70252j/UPF/'
     UPF=['%s.%s-'%(at[:2],txc)+pp+'-'+pot_kind+'.UPF' for pp, at in zip(pot_type,atom)]
-    try: #detect k_list
-        k_list
-    except NameError:
-        k_list=generate_klist(kbrav)
     main(prefix)
 
 #==============================================================================#
