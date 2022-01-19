@@ -82,5 +82,5 @@ fi
 
 if [ $sw_opt -eq 1 ] ; then
   python QE.py -opt
-  mpirun -np $ncore pw.x -npool $npool -nt 8 <$mat.scf>$mat.scf.out
+  mpirun -np $ncore pw.x -npool $npool <$mat.scf>$mat.scf.out
 fi

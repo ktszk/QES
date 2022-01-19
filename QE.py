@@ -31,25 +31,27 @@ sw_run = F                              #switch of execute DFT calculation or no
 sw_mpi = T                              #switch of MPI calculation
 from_poscar=False
 #======================lattice parameters==========================
-aa=3.189                                #lattice parameter a
+aa=3.218                                #lattice parameter a
 ab=aa                                   #lattice parameter b
-ac=5.178                                #lattice parameter c
+ac=5.244                                #lattice parameter c
 
 alpha=90.                               #lattice angle alpha
 beta=90.                                #lattice angle beta
 gamma=120.                              #lattice angle gamma
 
 #optional parameters
-sw_celldm = F                            #use celldm(1) if ibrav==0
-#cry_ax[]                                #crystal axes if you use ibrav==0
-#klist=[]                                #if you choose your own klist, write it here.
-#kbrav=4                                 #select build-in klist when from_poscar=True
-#for supercell calculation
-sw_sc=True
-sc_size=[3,4,2]
-imp_atom=['Eu']
-imp_position=[[['Ga',0]]]
-imp_pot_type=['spdn']
+sw_celldm = F                           #use celldm(1) if ibrav==0
+#cry_ax[]                               #crystal axes if you use ibrav==0
+#klist=[]                               #if you choose your own klist, write it here.
+#kbrav=4                                #select build-in klist when from_poscar=True
+
+#-----------for supercell calculation (generate supercell)---------
+sw_sc=False                             #switch of supercell calculation
+sc_size=[3,3,3]                         #supercell size
+imp_atom=['Eu']                         #list of impurity atom names
+imp_position=[[['Ga',0]]]               #list of impurity positions
+imp_pot_type=['spdn']                   #impirity pp
+vac_position=[['N',0]]                  #list of vacancy positions
 #=================Crystal structure & conditions===================
 prefix='GaN'                            #material name (or job name)
 space=186                               #space group
@@ -58,18 +60,18 @@ atomic_position=[[[1./3., 2./3., 0.],[2./3., 1./3., .5]],
                  [[1./3., 2./3., 3./8.],[2./3., 1./3., 7./8.]]]
 #------------------------------------------------------------------
 ibrav=4                                 #brave lattice type  
-type_xc='pbe'                        #type of exchange correlation functional
+type_xc='pbe'                           #type of exchange correlation functional
 pot_kind='kjpaw_psl.1.0.0'
 pot_type=['dn','n']                     #psede potential name
 
 sw_so = F                               #activate soc and noncliner calc.
 sw_vdW = F                              #activate van der Waals interaction
 sw_spn_pol = F
-vdW_corr = 'vdW-DF'                      #set van der Waals type
+vdW_corr = 'vdW-DF'                     #set van der Waals type
 #=================== directorys settings ==========================
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
 outdir = './'                           #path of output directory
-#mpiopt='$LSF_BINDIR/openmpi-'           #direct link of mpirun or mpiexec if you need
+#mpiopt='$LSF_BINDIR/openmpi-'          #direct link of mpirun or mpiexec if you need
 #================== switch of calculation =========================
 sw_scf = F                              #generate input file for scf calculation
 sw_dos = F                              #generate input file for dos calc.
@@ -89,11 +91,12 @@ sw_opt = F                              #switch of optimaization
 k_mesh_scf = [10,10,10]                 #k mesh for DFT calc
 k_mesh_bands = 20                       #k mesh for bands calc
 k_mesh_wannier = [8,8,8]                #k mesh for wannierize
-ecut = 40.0                             #cut off energy of pw basis
-#ec_rho = 800                            #cut off energy of density
+ecut = 60.0                             #cut off energy of pw basis
+ec_rho = 800                            #cut off energy of density
 (e_conv, f_conv) = (1.0e-5, 1.0e-4)     #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv) = (1.0e-8, 1.0e-8) #threshold of convergence on scf,nscf cycles
 elec_step = 200                         #threthold of scf cycle
+#mixing_beta = 0.5                      #mixing for scf cycle
 nband = 30                              #number of bands
 nstep = 100                             #number of MD or optimization step
 dgs = 0.025                             #dispersion of k-mesh
@@ -102,15 +105,15 @@ occupations='tetrahedra_opt'            #occupation setting
 #occupations='smearing'
 #occupations='fixed'
 eband_win = [-10., 15.]                 #energy range of .ps file
-#edos_win = [-30., 15.]                  #energy range of .dos file
+#edos_win = [-30., 15.]                 #energy range of .dos file
 wf_collect = T                          #collect paralleled wavefunctions or not usually T
 sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
 nspin=1                                 #spin polarized setting nonpol=1,z-axis=2,general=4
-#mmom=[1,0]                              #initial spin polization
-#theta_m=[90,0]                          #initial spin angle theta (tilt for z axis) use only nspin=4
-#phi_m=[180,0]                           #initial spin angle phi (xy plane) use only nspin=4
+#mmom=[1,0]                             #initial spin polization
+#theta_m=[90,0]                         #initial spin angle theta (tilt for z axis) use only nspin=4
+#phi_m=[180,0]                          #initial spin angle phi (xy plane) use only nspin=4
 #--------------------LDA+U parameters------------------------------
 sw_ldaU = F                             #switch LDA+U
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
@@ -320,6 +323,7 @@ def get_bravs(space,ibrav):
                     num_brav=14
     ibrav=num_brav
     return ibrav,num_brav
+
 def gen_SC_positions(sc_size,positions):
     sc_positions=[]
     for pos in positions:
@@ -334,6 +338,14 @@ def gen_SC_positions(sc_size,positions):
                         slide=np.array([k*x_slide,j*y_slide,i*z_slide])
                         tmp.append(list(p*np.array([x_slide,y_slide,z_slide])+slide))
         sc_positions.append(tmp)
+    try:
+        vac_position
+        for pos in vac_position:
+            for i,at in enumerate(atom):
+                if at==pos[0]:
+                    del sc_positions[i][pos[1]]
+    except NameError:
+        print('no vacancy')
     try:
         imp_atom
         imp_position
@@ -763,6 +775,12 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
         elec_step
         var_electrons+=['electron_maxstep']
         val_electrons.update({'electron_maxstep':elec_step})
+    except NameError:
+        pass
+    try:
+        mixing_beta
+        var_electrons+=['mixing_beta']
+        val_electrons.update({'mixing_beta':mixing_beta})
     except NameError:
         pass
     if sw_opt:
