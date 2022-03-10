@@ -91,14 +91,13 @@ sw_md = F
 k_mesh_scf = [8,8,8]                    #k mesh for DFT calc
 k_mesh_bands = 20                       #k mesh for bands calc
 k_mesh_wannier = [8,8,8]                #k mesh for wannierize
-ecut = 60.0                             #cut off energy of pw basis
-ec_rho = 800                            #cut off energy of density
+ecut = 40.0                             #cut off energy of pw basis
+ec_rho = 600                            #cut off energy of density
 (e_conv, f_conv) = (1.0e-5, 1.0e-4)     #threshold of total energy's convergence and force's one 
 (scf_conv,nscf_conv) = (1.0e-8, 1.0e-8) #threshold of convergence on scf,nscf cycles
 elec_step = 200                         #threthold of scf cycle
 mixing_beta = 0.5                       #mixing for scf cycle
-nband = 480                             #number of bands
-nstep = 100                             #number of MD or optimization step
+nband = 50                              #number of bands
 dgs = 0.025                             #dispersion of k-mesh
 de = 0.01                               #delta E for dos
 occupations='tetrahedra_opt'            #occupation setting
@@ -107,7 +106,7 @@ occupations='tetrahedra_opt'            #occupation setting
 eband_win = [-10., 15.]                 #energy range of .ps file
 #edos_win = [-30., 15.]                  #energy range of .dos file
 wf_collect = T                          #collect paralleled wavefunctions or not usually T
-sw_nosym = F                            #no symmetry and no inversion
+sw_nosym = T                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
 nspin=1                                 #spin polarized setting nonpol=1,z-axis=2,general=4
@@ -119,10 +118,13 @@ sw_ldaU = F                             #switch LDA+U
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
 lda_J = [0., 0.]                        #Hubbard J list
 #-----------------optimization cell settings-----------------------
+opt_step = 100                          #number of optimization step
 press=0.0                               #pressure (Kbar)
 p_conv=.5e0                             #conv threshold
 #----------------------MD settings---------------------------------
-sw_vc = T                               #variable lattice param. or not
+md_step=500                             #number of MD step
+dt = 20                                 #time step 20a.u.~1fs
+sw_vc = F                               #variable lattice param. or not
 dynamics = 'verlet'
 md_temp = 300                           #temperature for MD
 ion_temp = 'andersen'
@@ -670,13 +672,20 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     fname='%s.%s'%(prefix,fext)
     fstream=''
     var_control=['title','calculation','restart_mode','outdir','pseudo_dir',
-                 'prefix','etot_conv_thr','forc_conv_thr','nstep','wf_collect']
+                 'prefix','etot_conv_thr','forc_conv_thr','wf_collect']
     if not (sw_ldaU and (sum(lda_J)!=0 or sw_so)):
         var_control=var_control+['tstress','tprnfor']
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':w_conv(e_conv),
-                 'forc_conv_thr':w_conv(f_conv),'nstep':nstep,'tstress':'.True.','tprnfor':'.True.',
+                 'forc_conv_thr':w_conv(f_conv),'tstress':'.True.','tprnfor':'.True.',
                  'wf_collect':TorF(wf_collect),'verbosity':'high'}
+    if calc in {'relax','md','vc-relax','vc-md'}:
+        nstep=opt_step if calc in {'relax','vc-relax'} else md_step
+        var_control+=['nstep']
+        val_control.update({'nstep':nstep})
+        if calc in {'md','vc-md'}:
+            var_control+=['dt']
+            val_control.update({'dt':dt})
     fs_control=make_fstring_obj('control',var_control,val_control,'pw')
     fstream+=fs_control
 
