@@ -118,6 +118,9 @@ nspin=1                                 #spin polarized setting nonpol=1,z-axis=
 sw_ldaU = F                             #switch LDA+U
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
 lda_J = [0., 0.]                        #Hubbard J list
+#-----------------optimization cell settings-----------------------
+press=0.0                               #pressure (Kbar)
+p_conv=.5e0                             #conv threshold
 #======================ph_parameters===============================
 q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
 q_mesh_bands = 20                       #q mesh for phonon band calc
@@ -798,6 +801,9 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     if calc in {'vc-relax','vc-md'}:
         var_cell=[]
         val_cell={}
+        if press!=0:
+            var_cell+=['press','press_conv_thr']
+            val_cell.update({'press':press,'press_conv_thr':p_conv})
         fs_cell=make_fstring_obj('cell',var_cell,val_cell,'pw')
         fstream+=fs_cell
 
