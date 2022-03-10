@@ -20,11 +20,12 @@ sw_scf=0
 sw_band=0
 sw_pdos=0
 sw_wan=0
-sw_post_wan=1
+sw_post_wan=0
 sw_ph=0
 sw_post_ph=0
 sw_epw=0
 sw_opt=0
+sw_cp=1
 
 ncore=16
 npool=4
@@ -70,17 +71,22 @@ if [ $sw_ph -eq 1 ] ; then
 fi
 
 if [ $sw_post_ph -eq 1 ] ; then
-    mpirun -np $ncore q2r.x<$mat.q2r>$mat.q2r.out
-    mpirun -np $ncore matdyn.x<$mat.matdyn>$mat.matdyn.out
-    mpirun -np $ncore matdyn.x<$mat.freq>$mat.freq.out
+  mpirun -np $ncore q2r.x<$mat.q2r>$mat.q2r.out
+  mpirun -np $ncore matdyn.x<$mat.matdyn>$mat.matdyn.out
+  mpirun -np $ncore matdyn.x<$mat.freq>$mat.freq.out
 fi
 
 if [ $sw_epw -eq 1 ] ; then
-    mpirun -np $ncore pw.x -npool $ncore  <$mat.nscf>$mat.nscf.out
-    mpirun -np $ncore epw.x -npool $ncore  <$mat.epw>$mat.epw.out
+  mpirun -np $ncore pw.x -npool $ncore  <$mat.nscf>$mat.nscf.out
+  mpirun -np $ncore epw.x -npool $ncore  <$mat.epw>$mat.epw.out
 fi
 
 if [ $sw_opt -eq 1 ] ; then
   python QE.py -opt
   mpirun -np $ncore pw.x -npool $npool <$mat.scf>$mat.scf.out
+fi
+
+if [ $sw_cp -eq 1 ] ; then
+  python QE.py -md
+  mpirun -np $ncore cp.x -npool $npool <$mat.cp>$mat.cp.out
 fi

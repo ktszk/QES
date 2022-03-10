@@ -45,7 +45,7 @@ sw_celldm = F                            #use celldm(1) if ibrav==0
 #klist=[]                                #if you choose your own klist, write it here.
 #kbrav=4                                 #select build-in klist when from_poscar=True
 #for supercell calculation
-sw_sc=True
+sw_sc=False
 sc_size=[3,3,3]
 imp_atom=['Eu']
 imp_position=[[['Ga',0]]]
@@ -86,6 +86,7 @@ sw_wan_init_nscf = F                    #calc. nscf cycle for wannier90
 sw_post_wan =T                          #calc postwan process
 sw_restart = T                          #switch restart tag or not
 sw_opt = F                              #switch of optimaization
+sw_md = F
 #=====================pw_parameters================================
 k_mesh_scf = [8,8,8]                    #k mesh for DFT calc
 k_mesh_bands = 20                       #k mesh for bands calc
@@ -120,6 +121,11 @@ lda_J = [0., 0.]                        #Hubbard J list
 #-----------------optimization cell settings-----------------------
 press=0.0                               #pressure (Kbar)
 p_conv=.5e0                             #conv threshold
+#----------------------MD settings---------------------------------
+sw_vc = T                               #variable lattice param. or not
+dynamics = 'verlet'
+md_temp = 300                           #temperature for MD
+ion_temp = 'andersen'
 #======================ph_parameters===============================
 q_mesh_dyn = [4, 4, 4]                  #q mesh for phonon DFPT calc
 q_mesh_bands = 20                       #q mesh for phonon band calc
@@ -203,6 +209,7 @@ parser.add_argument("-p","-ph","-phonon",help='generate phonon calc files',actio
 parser.add_argument("-w","-wan","-wannier",help='generate wannier calc files',action='store_true')
 parser.add_argument("-o","-opt","-optimize",help='generate scf file for optimization',action='store_true')
 parser.add_argument("-e","-epw","-el_phonon",help='generate epw calc files',action='store_true')
+parser.add_argument("-m","-md",help='generate scf file for MD',action='store_true')
 args=parser.parse_args()
 if args.s:
     sw_scf=True
@@ -221,6 +228,8 @@ if args.o:
     sw_opt=True
 if args.e:
     sw_epw=True
+if args.m:
+    sw_md=True
 try:
     mpiopt
 except NameError:
@@ -796,6 +805,9 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
     if calc in {'relax','md','vc-relax','vc-md'}:
         var_ions=[]
         val_ions={}
+        if calc in {'md','vc-md'}:
+            var_ions+=['ion_dynamics','ion_temperature','tempw']
+            val_ions.update({'ion_dynamics':dynamics,'ion_temperature':ion_temp,'tempw':md_temp})
         fs_ions=make_fstring_obj('ions',var_ions,val_ions,'pw')
         fstream+=fs_ions
 
@@ -1126,6 +1138,8 @@ def main(prefix):
                     make_pw_in('vc-relax',False,restart) #make pw.x's input file for scf
                     os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
                     date()
+    elif sw_md:
+        make_pw_in('vc-md' if sw_vc else 'md',False)
     else:
         if sw_scf: #calculate scf cycle
             make_pw_in('scf',False) #make pw.x's input file for scf
