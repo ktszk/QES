@@ -655,7 +655,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
     return k_string
 
 #---------------------input file generators-------------------------------
-def make_pw_in(calc,kconfig,restart="'from_scratch'"):
+def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
     def atomic_parameters_stream(atom,atomic_position,UPF):
         atom_string='\nATOMIC_SPECIES\n'
         for at,up in zip(atom,UPF):
@@ -666,7 +666,8 @@ def make_pw_in(calc,kconfig,restart="'from_scratch'"):
         return atom_string
 
     (fext,convthr) =(('nscf' if calc=='nscf' else 'bands',nscf_conv) 
-                     if calc in ['nscf','bands'] else ('scf',scf_conv))
+                     if calc in {'nscf','bands'} else ('md',scf_conv) if calc in {'md','vc-md'}
+                     else('scf',scf_conv))
     occup=("'smearing'" if kconfig else "'%s'"%occupations)
 
     fname='%s.%s'%(prefix,fext)
@@ -1117,6 +1118,10 @@ def make_epw():
              +['nkf%d'%(i+1) for i in range(3)]+['nqf%d'%(i+1) for i in range(3)])
     fstream=make_fstring_obj('inputepw',var_epw,val_epw,'epw')
     write_file(fname,fstream)
+
+def make_cppp():
+    fname='%s.cppp'%prefix
+
 #---------------------------- main ---------------------------------
 def main(prefix):
     date()
@@ -1129,7 +1134,7 @@ def main(prefix):
         name='%s.%s'%(prefix,exe)
         return '<%s>%s.out'%tuple([name]*2)
     if sw_opt: #optimaization
-        make_pw_in('vc-relax',False) #make pw.x's input file for scf
+        make_pw_cp_in('vc-relax',False) #make pw.x's input file for scf
         if sw_run:
             ck_conv=True
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
@@ -1144,21 +1149,24 @@ def main(prefix):
                 else:
                     print('optimization error!')
                 if(not ck_conv):
-                    make_pw_in('vc-relax',False,restart) #make pw.x's input file for scf
+                    make_pw_cp_in('vc-relax',False,restart) #make pw.x's input file for scf
                     os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
                     date()
     elif sw_md:
-        make_pw_in('vc-md' if sw_vc else 'md',False)
+        make_pw_cp_in('vc-md' if sw_vc else 'md',False)
+        if sw_run:
+            os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'md'))
+            date()
     else:
         if sw_scf: #calculate scf cycle
-            make_pw_in('scf',False) #make pw.x's input file for scf
+            make_pw_cp_in('scf',False) #make pw.x's input file for scf
             if sw_vdW and vdW_corr=='vdW-DF' and (not os.path.isfile('vdW_kernel_table')):
                 os_and_print(mpiexe+'generate_vdW_kernel_table.x ')
             if sw_run:
                 os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
                 date()
         if sw_dos:
-            make_pw_in('nscf',False) #make pw.x's input file for nscf
+            make_pw_cp_in('nscf',False) #make pw.x's input file for nscf
             if sw_prj:
                 make_prjwfc_in()
             else:
@@ -1171,7 +1179,7 @@ def main(prefix):
                     os_and_print('dos.x '+os_io(prefix,'dos_in'))
                 date()
         if sw_bands: #calculate band structure
-            make_pw_in('bands',True) #make pw.x's input file for bands
+            make_pw_cp_in('bands',True) #make pw.x's input file for bands
             if sw_run:
                 os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'bands'))
                 date()
@@ -1183,7 +1191,7 @@ def main(prefix):
                 os_and_print('plotband.x '+os_io('eband','plotband'))
         if sw_wan: #wannierize
             if sw_wan_init_nscf: #calculate energy of all k-points for wannier90
-                make_pw_in('nscf',True) #make pw.x's input file for nscf
+                make_pw_cp_in('nscf',True) #make pw.x's input file for nscf
                 if sw_run:
                     os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'nscf'))
                     date()

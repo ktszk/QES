@@ -25,7 +25,7 @@ sw_ph=0
 sw_post_ph=0
 sw_epw=0
 sw_opt=0
-sw_cp=1
+sw_md=1
 
 ncore=16
 npool=4
@@ -86,7 +86,13 @@ if [ $sw_opt -eq 1 ] ; then
   mpirun -np $ncore pw.x -npool $npool <$mat.scf>$mat.scf.out
 fi
 
-if [ $sw_cp -eq 1 ] ; then
+if [ $sw_md -eq 1 ] ; then
   python QE.py -md
+  mpirun -np $ncore pw.x -npool $npool <$mat.md>$mat.md.out
+fi
+
+if [ $sw_cp -eq 1 ] ; then
+  python QE.py -cp
   mpirun -np $ncore cp.x -npool $npool <$mat.cp>$mat.cp.out
+  cppp.x <$mat.cppp>$mat.cppp.out
 fi
