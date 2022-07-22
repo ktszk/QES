@@ -66,7 +66,7 @@ pot_type=['dn','n']                     #psede potential name
 sw_so = F                               #activate soc and noncliner calc.
 sw_vdW = F                              #activate van der Waals interaction
 sw_spn_pol = F
-vdW_corr = 'vdW-DF'                      #set van der Waals type
+vdW_corr = 'rVV10' #'vdW-DF'            #set van der Waals type
 #=================== directorys settings ==========================
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
 outdir = './'                           #path of output directory
@@ -106,7 +106,7 @@ occupations='tetrahedra_opt'            #occupation setting
 eband_win = [-10., 15.]                 #energy range of .ps file
 #edos_win = [-30., 15.]                  #energy range of .dos file
 wf_collect = T                          #collect paralleled wavefunctions or not usually T
-sw_nosym = T                            #no symmetry and no inversion
+sw_nosym = F                            #no symmetry and no inversion
 opt_vol = F                             #optimize only lattice parameters
 scf_mustnot_conv =F                     #noneed convergence in optimaization cycle
 nspin=1                                 #spin polarized setting nonpol=1,z-axis=2,general=4
