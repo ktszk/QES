@@ -117,6 +117,9 @@ nspin=1                                 #spin polarized setting nonpol=1,z-axis=
 sw_ldaU = F                             #switch LDA+U
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
 lda_J = [0., 0.]                        #Hubbard J list
+#------------------------HSE config--------------------------------
+sw_hse=T
+hse_q=[2,2,2]
 #-----------------optimization cell settings-----------------------
 opt_step = 100                          #number of optimization step
 press=0.0                               #pressure (Kbar)
@@ -724,6 +727,11 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
         else:
             var_system+=['vdw_corr']
             val_system.update({'vdw_corr':"'%s'"%vdW_corr})
+    else:
+        if sw_hse and calc=='scf':
+            var_system+=['input_dft','nqx1','nqx2','nqx3','x_gamma_extrapolation','exxdiv_treatment']
+            val_system.update({'input_dft':"'hse'",'nqx1':hse_q[0],'nqx2':hse_q[1],'nqx3':hse_q[2],
+                               'x_gamma_extrapolation':'.True.','exxdiv_treatment':'gygi-baldereschi'})
     if sw_spn_pol:
         var_system+=['nspin']
         if len(mmom)!=0:
