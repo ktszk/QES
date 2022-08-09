@@ -25,13 +25,16 @@ sw_ph=0
 sw_post_ph=0
 sw_epw=0
 sw_opt=0
-sw_md=1
+sw_md=0
 
+#nthreads*ncore=num_of_smp_core
 ncore=16
+nthreads=1
 npool=4
 nbnd=0
 mat=Bi
 
+export OMP_NUM_TRHEADS=$nthreads
 if [ $nbnd -gt 0 ] ; then
   npband=-bgrp $nbnd
 fi

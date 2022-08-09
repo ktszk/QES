@@ -23,6 +23,7 @@
 #BSUB -o std_output_file
 #BSUB -m "node_name"
 (T,F)=(True,False)                      #alias for bool numbers
+qev=7.0                                 #qe version
 #======================parallel settings===========================
 (mpi_num, kthreads_num) = (12, 4)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
@@ -114,9 +115,10 @@ nspin=1                                 #spin polarized setting nonpol=1,z-axis=
 #theta_m=[90,0]                          #initial spin angle theta (tilt for z axis) use only nspin=4
 #phi_m=[180,0]                           #initial spin angle phi (xy plane) use only nspin=4
 #--------------------LDA+U parameters------------------------------
-sw_ldaU = F                             #switch LDA+U
+sw_ldaU_old = F                         #switch LDA+U (old type)
 lda_U = [0., 0.]                        #Hubbard U list, length < atom
 lda_J = [0., 0.]                        #Hubbard J list
+#Hubb=[]                                 #Hubbard parameter setting qe 7.0<=
 #------------------------HSE config--------------------------------
 sw_hse=T
 hse_q=[2,2,2]
@@ -363,7 +365,7 @@ def gen_SC_positions(sc_size,positions):
                     del sc_positions[i][pos[1]-del_num[i]]
                     del_num[i]+=1
     except NameError:
-        print('no vacancy')
+        print('no vacancy',flush=True)
     try:
         imp_atom
         imp_position
@@ -378,7 +380,7 @@ def gen_SC_positions(sc_size,positions):
                 new_imp_pos.append(tmp)
         sc_positions=new_imp_pos+sc_positions
     except NameError:
-        print('no impurity')
+        print('no impurity',flush=True)
     return sc_positions
 
 def read_poscar(fname='POSCAR'):
@@ -465,11 +467,14 @@ def date():
     d=datetime.datetime.today()
     setlocale(LC_ALL,'')
     print(d.strftime('%Y年  %B %d日 %A %H:%M:%S JST' if os.environ['LANG'].find('ja')!=-1 
-                     else '%a %b %d %X JST %Y'))
+                     else '%a %b %d %X JST %Y'),flush=True)
 
 def os_and_print(command):
-    print(command)
-    subprocess.run(command,shell=True)
+    print(command,flush=True)
+    info=subprocess.run(command,shell=True)
+    if info.returncode!=0:
+        print('something error',flush=True)
+        exit()
 
 def get_ef(name,ext):
     fname='%s.%s.out'%(name,ext)
@@ -489,10 +494,10 @@ def get_ef(name,ext):
                 return float(it1[0])
         else:
             print('input error from %s.%s.out\n'%(name,ext)
-                  +'return ef = 0\n')
+                  +'return ef = 0\n',flush=True)
             return 0.
     else:
-        print('can not find %s\n return ef = 0\n'%fname)
+        print('can not find %s\n return ef = 0\n'%fname,flush=True)
         return 0.
 
 def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
@@ -677,7 +682,7 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
     fstream=''
     var_control=['title','calculation','restart_mode','outdir','pseudo_dir',
                  'prefix','etot_conv_thr','forc_conv_thr','wf_collect']
-    if not (sw_ldaU and (sum(lda_J)!=0 or sw_so)):
+    if not (sw_ldaU_old and (sum(lda_J)!=0 or sw_so)):
         var_control=var_control+['tstress','tprnfor']
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':w_conv(e_conv),
@@ -697,8 +702,7 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
-                'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.','nspin':nspin,
-                'lda_plus_u':'.True.','lda_plus_u_kind':1}
+                'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.','nspin':nspin}
     if sw_ep:
         var_system+=['la2f']
     if sw_nosym:
@@ -714,13 +718,13 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
     if sw_vdW:
         if vdW_corr=='vdW-DF':
             if sw_so:
-                print('We cannot use vdW-DF with noncllinear spin')
+                print('We cannot use vdW-DF with noncllinear spin',flush=True)
             else:
                 var_system+=['input_dft']
                 val_system.update({'input_dft':"'vdW-DF'"})
         elif vdW_corr=='rVV10':
             if sw_so:
-                print('We cannot use rVV10 with noncllinear spin')
+                print('We cannot use rVV10 with noncllinear spin',flush=True)
             else:
                 var_system+=['input_dft']
                 val_system.update({'input_dft':"'rVV10'"})
@@ -747,19 +751,34 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
                     for i,m in enumerate(phi_m):
                         var_system+=['angle2(%d)'%(i+1)]
                         val_system.update({'angle2(%d)'%(i+1):m})
-    if sw_ldaU:
+    if sw_ldaU_old:
         var_system+=['lda_plus_u']
-        if sw_so or sum(lda_J)!=0:
-            var_system+=['lda_plus_u_kind']
-        for i,U in enumerate(lda_U[:len(atom)]):
-            tmp='Hubbard_U(%d)'%(i+1)
-            var_system+=[tmp]
-            val_system.update({tmp:U})
-        if sum(lda_J)!=0:
-            for i,J in enumerate(lda_J[:len(atom)]):
-                tmp='Hubbard_J(1,%d)'%(i+1)
+        val_system.update({'lda_plus_u':'.True.'})
+        if qev<7.0:
+            if sw_so or sum(lda_J)!=0:
+                var_system+=['lda_plus_u_kind']
+                val_system.update({'lda_plus_u_kind':1})
+            for i,U in enumerate(lda_U[:len(atom)]):
+                tmp='Hubbard_U(%d)'%(i+1)
                 var_system+=[tmp]
-                val_system.update({tmp:J})
+                val_system.update({tmp:U})
+            if sum(lda_J)!=0:
+                for i,J in enumerate(lda_J[:len(atom)]):
+                    tmp='Hubbard_J(1,%d)'%(i+1)
+                    var_system+=[tmp]
+                    val_system.update({tmp:J})
+        else:
+            var_system+=['lda_plus_u_kind']
+            val_system.update({'lda_plus_u_kind':0})
+            for i,U in enumerate(lda_U[:len(atom)]):
+                tmp='Hubbard_alpha(%d)'%(i+1)
+                var_system+=[tmp]
+                val_system.update({tmp:U})
+            if sum(lda_J)!=0:
+                for i,J in enumerate(lda_J[:len(atom)]):
+                    tmp='Hubbard_beta(%d)'%(i+1)
+                    var_system+=[tmp]
+                    val_system.update({tmp:J})
     if ibrav!=0:
         """
         setting cell parameters
@@ -843,7 +862,6 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
     if ibrav==0:
         fs_cellparam='CELL_PARAMETERS\n'+cell_parameter_stream(axis,deg)+'\n'
         fstream+=fs_cellparam
-
     fstream+='K_POINTS %s\n'%('CRYSTAL' if kconfig else 'AUTOMATIC')
     if kconfig:
         if calc=='nscf':
@@ -863,7 +881,17 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
             k_mesh=[k_mesh_scf]*3
         else:
             print('k_mesh_scf is list(datatype=int) or int only')
+            exit()
         fstream+='%d %d %d %d %d %d\n'%tuple(k_mesh+[0]*3)
+    try:
+        Hubb
+        if len(Hubb)!=0:
+            fshubb='\nHUBBARD atomic\n'
+            for hub in Hubb:
+                fshubb+='  %s %s %5.2f\n'%tuple(hub)
+            fstream+=fshubb
+    except NameError:
+        pass
     write_file(fname,fstream)
 
 def make_dos_in():
@@ -1290,7 +1318,7 @@ if __name__=="__main__":
                     print('conflict atomic num')
                     exit()
         except NameError:
-            print('no impurity')
+            print('no impurity',flush=True)
         if sc_size[0]!=sc_size[1]:
             if num_brav in {1,2,3,4,5,6,7}:
                 space=1
