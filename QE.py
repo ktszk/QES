@@ -68,6 +68,7 @@ sw_so = F                               #activate soc and noncliner calc.
 sw_vdW = F                              #activate van der Waals interaction
 sw_spn_pol = F
 vdW_corr = 'rVV10' #'vdW-DF'            #set van der Waals type
+bgc=2                                   #back ground charge
 #=================== directorys settings ==========================
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
 outdir = './'                           #path of output directory
@@ -702,7 +703,7 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
     val_system={'ibrav':ibrav,'nat':sum(len(a) for a in atomic_position),
                 'ntyp':len(atom),'occupations':occup,'smearing':"'marzari-vanderbilt'",
                 'degauss':0.025,'la2f':'.True.','nbnd':nband,'ecutwfc':ecut,'nosym':'.True.',
-                'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.','nspin':nspin}
+                'noinv':'.True.','noncolin':'.True.','lspinorb':'.True.','nspin':nspin,'tot_charge':bgc}
     if sw_ep:
         var_system+=['la2f']
     if sw_nosym:
@@ -715,6 +716,8 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
         pass
     if sw_so:
         var_system+=['noncolin','lspinorb']
+    if bgc!=0:
+        var_system+=['tot_charge']
     if sw_vdW:
         if vdW_corr=='vdW-DF':
             if sw_so:
