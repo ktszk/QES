@@ -32,9 +32,9 @@ sw_run = F                              #switch of execute DFT calculation or no
 sw_mpi = T                              #switch of MPI calculation
 from_poscar=False
 #======================lattice parameters==========================
-aa=3.218                                #lattice parameter a
+aa=3.231                                #lattice parameter a
 ab=aa                                   #lattice parameter b
-ac=5.244                                #lattice parameter c
+ac=5.258                                #lattice parameter c
 
 alpha=90.                               #lattice angle alpha
 beta=90.                                #lattice angle beta
@@ -46,12 +46,14 @@ sw_celldm = F                            #use celldm(1) if ibrav==0
 #klist=[]                                #if you choose your own klist, write it here.
 #kbrav=4                                 #select build-in klist when from_poscar=True
 #for supercell calculation
-sw_sc=False
+sw_sc=True
 sc_size=[3,3,3]
 imp_atom=['Eu']
 imp_position=[[['Ga',0]]]
 imp_pot_type=['spdn']
-vac_position=[['N',0]]
+#vac_position=[]
+sw_random_replace=False
+rep_atom=[['Ga','Al','nl',32]]
 #=================Crystal structure & conditions===================
 prefix='GaN'                            #material name (or job name)
 space=186                               #space group
@@ -120,7 +122,7 @@ lda_U = [0., 0.]                        #Hubbard U list, length < atom
 lda_J = [0., 0.]                        #Hubbard J list
 #Hubb=[]                                 #Hubbard parameter setting qe 7.0<=
 #------------------------HSE config--------------------------------
-sw_hse=T
+sw_hse=False
 hse_q=[2,2,2]
 #-----------------optimization cell settings-----------------------
 opt_step = 100                          #number of optimization step
@@ -245,7 +247,6 @@ try:
     edos_win
 except NameError:
     edos_win=eband_win
-
 if sw_fs_plot:
     try: #detect fermi_mesh
         fermi_mesh
@@ -344,6 +345,7 @@ def get_bravs(space,ibrav):
 
 def gen_SC_positions(sc_size,positions):
     sc_positions=[]
+    num_diff_atom=np.zeros(len(atom),dtype=int)
     for pos in positions:
         tmp=[]
         for i in range(sc_size[2]):
@@ -362,13 +364,37 @@ def gen_SC_positions(sc_size,positions):
         for pos in vac_position:
             for i,at in enumerate(atom):
                 if at==pos[0]:
-                    del sc_positions[i][pos[1]-del_num[i]]
-                    del_num[i]+=1
+                    del sc_positions[i][pos[1]-num_diff_atom[i]]
+                    num_diff_atom[i]+=1
     except NameError:
         print('no vacancy',flush=True)
     try:
         imp_atom
         imp_position
+        imp_pot_type
+        if sw_random_replace:
+            import random
+            for j,at in enumerate(atom):
+                pos_len=len(sc_positions[j])-num_diff_atom[j]
+                rand_positions=random.sample(range(pos_len),pos_len)
+                for impos in imp_position:
+                    for ip in impos:
+                        if ip[0]==at:
+                            for k in rand_positions:
+                                if k==ip[1]:
+                                    rand_positions.remove(k)
+                ini_rand=0
+                for ra in rep_atom:
+                    if at==ra[0]:
+                        imp_atom.append(ra[1])
+                        tmp=[]
+                        it_randpos=rand_positions[ini_rand:ini_rand+ra[3]]
+                        it_randpos.sort()
+                        for i in it_randpos:
+                            tmp.append([ra[0],i])
+                        imp_position.append(tmp)
+                        imp_pot_type.append(ra[2])
+                        ini_rand+=ra[3]
         if len(imp_atom)!=0 and len(imp_atom)==len(imp_position):
             new_imp_pos=[]
             for pos in imp_position:
@@ -376,7 +402,9 @@ def gen_SC_positions(sc_size,positions):
                 for ps in pos:
                     for i,at in enumerate(atom):
                         if at==ps[0]:
-                            tmp.append(sc_positions[i].pop(ps[1]))
+                            pos_imp_num=ps[1]-num_diff_atom[i]
+                            tmp.append(sc_positions[i].pop(pos_imp_num))
+                            num_diff_atom[i]+=1
                 new_imp_pos.append(tmp)
         sc_positions=new_imp_pos+sc_positions
     except NameError:

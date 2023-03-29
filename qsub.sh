@@ -34,7 +34,7 @@ npool=4
 nbnd=0
 mat=Bi
 
-export OMP_NUM_TRHEADS=$nthreads
+export OMP_NUM_THREADS=$nthreads
 if [ $nbnd -gt 0 ] ; then
   npband=-bgrp $nbnd
 fi
