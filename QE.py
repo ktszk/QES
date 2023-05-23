@@ -70,7 +70,7 @@ sw_so = F                               #activate soc and noncliner calc.
 sw_vdW = F                              #activate van der Waals interaction
 sw_spn_pol = F
 vdW_corr = 'rVV10' #'vdW-DF'            #set van der Waals type
-bgc=2                                   #back ground charge
+bgc=0                                   #back ground charge
 #=================== directorys settings ==========================
 sw_apw = T                              #switch of pp dir for paw( and soc) or not
 outdir = './'                           #path of output directory
@@ -548,7 +548,7 @@ def atom_position(atom,atomic_position):
     mat=get_cr_mat(num_brav,F)
     mat=np.linalg.inv(mat).T
     aposition=[[list(mat.dot(np.array(ap))) for ap in app] for app in atomic_position]
-    tmp='%2s  %12.9f %12.9f %12.9f'+(' 0 0 0\n' if(sw_opt and opt_vol) else '\n')
+    tmp='%2s  %13.10f %13.10f %13.10f'+(' 0 0 0\n' if(sw_opt and opt_vol) else '\n')
     atom_string=''
     for i,at in enumerate(atom):
         for ap in aposition[i]:
@@ -564,8 +564,8 @@ def get_cr_mat(num_brav,sw=T):
                       [ 0., .5, .5],
                       [-.5, .5, 0.]])
     elif num_brav in {3,7,11}: #Body center
-        mat=np.array([[ .5, -.5, .5],
-                      [ .5,  .5, .5],
+        mat=np.array([[ .5,  .5, .5],
+                      [-.5,  .5, .5],
                       [-.5, -.5, .5]])
     elif num_brav==4: #hexa
         if sw:

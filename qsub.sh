@@ -17,7 +17,8 @@
 ##PBS -o out.o
 #PBS -l nodes=1:ppn=16
 sw_scf=0
-sw_band=0
+sw_band=1
+sw_dos=0
 sw_pdos=0
 sw_wan=0
 sw_post_wan=0
@@ -26,31 +27,37 @@ sw_post_ph=0
 sw_epw=0
 sw_opt=0
 sw_md=0
+sw_cp=0
 
 #nthreads*ncore=num_of_smp_core
 ncore=16
 nthreads=1
 npool=4
 nbnd=0
-mat=Bi
+mat=Na
 
 export OMP_NUM_THREADS=$nthreads
 if [ $nbnd -gt 0 ] ; then
   npband=-bgrp $nbnd
 fi
 
-cd $PBS_O_WORKDIR
+#cd $PBS_O_WORKDIR
 if [ $sw_scf -eq 1 ] ; then
   python QE.py -scf
   mpirun -np $ncore pw.x -npool $npool $npband <$mat.scf>$mat.scf.out
 fi
-if [ $sw_band -eq 1 ] ; then
-  python QE.py -dos -band
+
+if [ $sw_dos -eq 1 ] ; then
+  python QE.py -dos
   mpirun -np $ncore pw.x -npool $npool $npband <$mat.nscf>$mat.nscf.out
   if [ $sw_pdos -eq 1 ] ; then
     mpirun -np $ncore projwfc.x -npool $npool $npband <$mat.prjwfc>$mat.prjwfc.out
   fi
   dos.x<$mat.dos_in>$mat.dos_in.out
+fi
+
+if [ $sw_band -eq 1 ] ; then
+  python QE.py -band
   mpirun -np $ncore pw.x -npool $npool $npband <$mat.bands>$mat.bands.out
   bands.x<$mat.bands_in>$mat.bands_in.out
   plotband.x<eband.plotband>eband.plotband.out
