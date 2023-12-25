@@ -23,7 +23,6 @@
 #BSUB -o std_output_file
 #BSUB -m "node_name"
 (T,F)=(True,False)                      #alias for bool numbers
-qev=7.0                                 #qe version
 #======================parallel settings===========================
 (mpi_num, kthreads_num) = (12, 4)       #number of threads for MPI/openMP
 ithreads_num = 0                        #number of image for ph.x
@@ -46,7 +45,7 @@ sw_celldm = F                            #use celldm(1) if ibrav==0
 #klist=[]                                #if you choose your own klist, write it here.
 #kbrav=4                                 #select build-in klist when from_poscar=True
 #for supercell calculation
-sw_sc=True
+sw_sc=False
 sc_size=[3,3,3]
 imp_atom=['Eu']
 imp_position=[[['Ga',0]]]
@@ -62,7 +61,7 @@ atomic_position=[[[1./3., 2./3., 0.],[2./3., 1./3., .5]],
                  [[1./3., 2./3., 3./8.],[2./3., 1./3., 7./8.]]]
 #------------------------------------------------------------------
 ibrav=4                                 #brave lattice type  
-type_xc='pbe'                        #type of exchange correlation functional
+type_xc='pbe'                           #type of exchange correlation functional
 pot_kind='kjpaw_psl.1.0.0'
 pot_type=['dn','n']                     #psede potential name
 
@@ -118,10 +117,8 @@ nspin=1                                 #spin polarized setting nonpol=1,z-axis=
 #theta_m=[90,0]                          #initial spin angle theta (tilt for z axis) use only nspin=4
 #phi_m=[180,0]                           #initial spin angle phi (xy plane) use only nspin=4
 #--------------------LDA+U parameters------------------------------
-sw_ldaU_old = F                         #switch LDA+U (old type)
-lda_U = [0., 0.]                        #Hubbard U list, length < atom
-lda_J = [0., 0.]                        #Hubbard J list
-#Hubb=[]                                 #Hubbard parameter setting qe 7.0<=
+sw_ldaU = T                             #switch LDA+U (old type)
+Hubb=[['U','U-5f',5.0]]                 #Hubbard parameter setting qe 7.1 or greater
 #------------------------HSE config--------------------------------
 sw_hse=False
 hse_q=[2,2,2]
@@ -220,6 +217,7 @@ parser.add_argument("-w","-wan","-wannier",help='generate wannier calc files',ac
 parser.add_argument("-o","-opt","-optimize",help='generate scf file for optimization',action='store_true')
 parser.add_argument("-e","-epw","-el_phonon",help='generate epw calc files',action='store_true')
 parser.add_argument("-m","-md",help='generate scf file for MD',action='store_true')
+parser.add_argument("-r","-run",help='run espresso',action='store_true')
 args=parser.parse_args()
 if args.s:
     sw_scf=True
@@ -240,6 +238,8 @@ if args.e:
     sw_epw=True
 if args.m:
     sw_md=True
+if args.r:
+    sw_run=True
 try:
     mpiopt
 except NameError:
@@ -711,7 +711,7 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
     fstream=''
     var_control=['title','calculation','restart_mode','outdir','pseudo_dir',
                  'prefix','etot_conv_thr','forc_conv_thr','wf_collect']
-    if not (sw_ldaU_old and (sum(lda_J)!=0 or sw_so)):
+    if not (sw_ldaU and (sum(lda_J)!=0 or sw_so)):
         var_control=var_control+['tstress','tprnfor']
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':w_conv(e_conv),
@@ -782,34 +782,6 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
                     for i,m in enumerate(phi_m):
                         var_system+=['angle2(%d)'%(i+1)]
                         val_system.update({'angle2(%d)'%(i+1):m})
-    if sw_ldaU_old:
-        var_system+=['lda_plus_u']
-        val_system.update({'lda_plus_u':'.True.'})
-        if qev<7.0:
-            if sw_so or sum(lda_J)!=0:
-                var_system+=['lda_plus_u_kind']
-                val_system.update({'lda_plus_u_kind':1})
-            for i,U in enumerate(lda_U[:len(atom)]):
-                tmp='Hubbard_U(%d)'%(i+1)
-                var_system+=[tmp]
-                val_system.update({tmp:U})
-            if sum(lda_J)!=0:
-                for i,J in enumerate(lda_J[:len(atom)]):
-                    tmp='Hubbard_J(1,%d)'%(i+1)
-                    var_system+=[tmp]
-                    val_system.update({tmp:J})
-        else:
-            var_system+=['lda_plus_u_kind']
-            val_system.update({'lda_plus_u_kind':0})
-            for i,U in enumerate(lda_U[:len(atom)]):
-                tmp='Hubbard_alpha(%d)'%(i+1)
-                var_system+=[tmp]
-                val_system.update({tmp:U})
-            if sum(lda_J)!=0:
-                for i,J in enumerate(lda_J[:len(atom)]):
-                    tmp='Hubbard_beta(%d)'%(i+1)
-                    var_system+=[tmp]
-                    val_system.update({tmp:J})
     if ibrav!=0:
         """
         setting cell parameters
@@ -914,15 +886,11 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
             print('k_mesh_scf is list(datatype=int) or int only')
             exit()
         fstream+='%d %d %d %d %d %d\n'%tuple(k_mesh+[0]*3)
-    try:
-        Hubb
-        if len(Hubb)!=0:
-            fshubb='\nHUBBARD atomic\n'
-            for hub in Hubb:
-                fshubb+='  %s %s %5.2f\n'%tuple(hub)
-            fstream+=fshubb
-    except NameError:
-        pass
+    if sw_ldaU:
+        fshubb='\nHUBBARD (ortho-atomic)\n'
+        for hub in Hubb:
+            fshubb+='  %s %s %5.2f\n'%tuple(hub)
+        fstream+=fshubb
     write_file(fname,fstream)
 
 def make_dos_in():
@@ -1367,11 +1335,9 @@ if __name__=="__main__":
     if sw_so or sw_apw:
         txc='rel-'+type_xc if sw_so else type_xc
         pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
-        #pseude_dir='/home/usr2/h70252j/UPF/%s/'%txc
     else:
         txc=type_xc
         pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
-        #pseude_dir='/home/usr2/h70252j/UPF/'
     UPF=['%s.%s-'%(at[:2],txc)+pp+'-'+pot_kind+'.UPF' for pp, at in zip(pot_type,atom)]
     main(prefix)
 
