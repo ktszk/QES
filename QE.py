@@ -117,8 +117,8 @@ nspin=1                                 #spin polarized setting nonpol=1,z-axis=
 #theta_m=[90,0]                          #initial spin angle theta (tilt for z axis) use only nspin=4
 #phi_m=[180,0]                           #initial spin angle phi (xy plane) use only nspin=4
 #--------------------LDA+U parameters------------------------------
-sw_ldaU = T                             #switch LDA+U (old type)
-Hubb=[['U','U-5f',5.0]]                 #Hubbard parameter setting qe 7.1 or greater
+sw_ldaU = F                             #switch LDA+U (old type)
+Hubb=[['U','Ga-4p',2.0]]                #Hubbard parameter setting qe 7.1 or greater
 #------------------------HSE config--------------------------------
 sw_hse=False
 hse_q=[2,2,2]
@@ -711,7 +711,7 @@ def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
     fstream=''
     var_control=['title','calculation','restart_mode','outdir','pseudo_dir',
                  'prefix','etot_conv_thr','forc_conv_thr','wf_collect']
-    if not (sw_ldaU and (sum(lda_J)!=0 or sw_so)):
+    if not (sw_ldaU):
         var_control=var_control+['tstress','tprnfor']
     val_control={'title':"'%s'"%prefix,'calculation':"'%s'"%calc,'restart_mode':restart,'outdir':"'%s'"%outdir,
                  'pseudo_dir':"'%s'"%pseude_dir,'prefix':"'%s'"%prefix,'etot_conv_thr':w_conv(e_conv),
