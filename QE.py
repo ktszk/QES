@@ -91,7 +91,7 @@ sw_restart = T                          #switch restart tag or not
 sw_opt = F                              #switch of optimaization
 sw_md = F
 #=====================pw_parameters================================
-k_mesh_scf = [8,8,8]                    #k mesh for DFT calc
+k_mesh_scf = [4,4,4]                    #k mesh for DFT calc
 k_mesh_bands = 20                       #k mesh for bands calc
 k_mesh_wannier = [8,8,8]                #k mesh for wannierize
 ecut = 40.0                             #cut off energy of pw basis
@@ -559,22 +559,32 @@ def atom_position(atom,atomic_position):
 def get_cr_mat(num_brav,sw=T):
     if num_brav in {1,6,8}: #Simple
         mat=np.identity(3)
-    elif num_brav in {2,10}: #Face center
-        mat=np.array([[-.5, 0., .5],
-                      [ 0., .5, .5],
-                      [-.5, .5, 0.]])
-    elif num_brav in {3,7,11}: #Body center
-        mat=np.array([[ .5,  .5, .5],
-                      [-.5,  .5, .5],
-                      [-.5, -.5, .5]])
-    elif num_brav==4: #hexa
+    elif num_brav in {2,10}: #Face Centered
+        if num_brav==2: #FCC
+            mat=np.array([[-.5, 0., .5],
+                          [ 0., .5, .5],
+                          [-.5, .5, 0.]])
+        else: #FCO
+            mat=np.array([[ .5, 0., .5],
+                          [ 0., .5, .5],
+                          [ .5, .5, 0.]])
+    elif num_brav in {3,7,11}: #Body Centered
+        if num_brav in {3,11}: #BCC, BCO
+            mat=np.array([[ .5,  .5, .5],
+                          [-.5,  .5, .5],
+                          [-.5, -.5, .5]])
+        else: #BCT
+            mat=np.array([[ .5, -.5, .5],
+                          [ .5,  .5, .5],
+                          [-.5, -.5, .5]])
+    elif num_brav==4: #Hexa
         if sw:
             mat=np.array([[ 1., 0.            , 0.],
                           [-.5, .5*np.sqrt(3.), 0.],
                           [ 0., 0.            , 1.]])
         else:
             mat=np.identity(3)
-    elif num_brav==5: #trigonal
+    elif num_brav==5: #Trigonal
         cg=np.cos(np.pi*deg[2]/180)
         tx=np.sqrt((1-cg)*0.5)
         ty=np.sqrt((1-cg)/6)
@@ -585,15 +595,29 @@ def get_cr_mat(num_brav,sw=T):
                           [-tx,  -ty, tz]])
         else:
             mat=np.identity(3)
-    elif num_brav==9: #Orthorhombic Base center
+    elif num_brav==9: #Orthorhombic Base centered
         mat=np.array([[ .5, .5, 0.],
                       [-.5, .5, 0.],
                       [ 0., 0., 1.]])
-    elif num_brav==12: #Monoclinic
-        pass
-    elif num_brav==13: #Monoclinic
-        pass
-    elif num_brav==14: #Monoclinic
+    elif num_brav==12: #Simple Monoclinic
+        if sw:
+            phase=np.pi*deg[2]/180
+            r1=np.cos(phase)
+            r2=np.sin(phase)
+            mat=np.array([[ 1., 0., 0.],
+                          [ r1, r2, 0.],
+                          [ 0., 0., 1.]])
+        else:
+            mat=np.identity(3)
+    elif num_brav==13: #Base Centered Monoclinic
+        if sw:
+            phase=np.pi*deg[2]/180
+            r1=np.cos(phase)
+            r2=np.sin(phase)
+            mat=np.array([[ .5, 0.,-.5],
+                          [ r1, r2, 0.],
+                          [ .5, 0., .5]])
+    elif num_brav==14: #Triclinic
         if sw:
             phase=np.pi*deg[0]/180.
             phase2=np.pi*deg[1]/180.
