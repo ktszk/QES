@@ -177,6 +177,7 @@ w_conv=lambda a:'1.0E%d'%int(np.log10(a))
 sig_fig = 9                             #significant figure after decimal fraction
 bohr=round(0.52917721067, sig_fig)      #Bohr Radius
 ibohr=1.0/bohr                          #inverse of Bohr Radius
+pdir='/home/sk/Apps/pslibrary/%s/PSEUDOPOTENTIALS/'
 #========================= atomic mass ============================
 #       1             2             13            14          15          16           17            18
 mass={'H':1.00794,                                                                                  'He':4.002602,
@@ -1358,10 +1359,9 @@ if __name__=="__main__":
         type_xc='pbe'
     if sw_so or sw_apw:
         txc='rel-'+type_xc if sw_so else type_xc
-        pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
     else:
         txc=type_xc
-        pseude_dir='/home/suzu/pslibrary/%s/PSEUDOPOTENTIALS/'%txc
+    pseude_dir=pdir%txc
     UPF=['%s.%s-'%(at[:2],txc)+pp+'-'+pot_kind+'.UPF' for pp, at in zip(pot_type,atom)]
     main(prefix)
 
