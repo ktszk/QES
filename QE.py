@@ -256,7 +256,7 @@ if sw_fs_plot:
         fermi_mesh=100
 
 #==========================functions===============================
-def get_bravs(space,ibrav):
+def get_bravs(space,ibrav:int):
     if ibrav==0:
         num_brav=0
     else:
@@ -430,7 +430,7 @@ def read_poscar(fname='POSCAR'):
         cons+=i
     return(axis,cry_ax,atom,atomic_position)
 
-def generate_klist(num_brav):
+def generate_klist(num_brav:int)->list:
     if num_brav==1: #simple cube
         k_list=[['R',[.5,.5,0.]],['G',[0.,0.,0.]],
                 ['X',[.5,0.,0.]],['M',[.5,.5,0.]],
@@ -480,7 +480,7 @@ def generate_klist(num_brav):
                 ['Y',[0.,.5,0.]],['G',[0.,0.,0.]],['Z',[0.,0.,.5]]]
     return k_list
 
-def write_file(name,stream):
+def write_file(name:str,stream:str):
     f=open(name,'w')
     f.write(stream)
     f.close()
@@ -499,14 +499,14 @@ def date():
     print(d.strftime('%Y年  %B %d日 %A %H:%M:%S JST' if os.environ['LANG'].find('ja')!=-1 
                      else '%a %b %d %X JST %Y'),flush=True)
 
-def os_and_print(command):
+def os_and_print(command:str):
     print(command,flush=True)
     info=subprocess.run(command,shell=True)
     if info.returncode!=0:
         print('something error',flush=True)
         exit()
 
-def get_ef(name,ext):
+def get_ef(name:str,ext:str)->float:
     fname='%s.%s.out'%(name,ext)
     if os.path.exists(fname):
         if occupations=='fixed':
@@ -530,7 +530,7 @@ def get_ef(name,ext):
         print('can not find %s\n return ef = 0\n'%fname,flush=True)
         return 0.
 
-def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
+def make_fstring_obj(obj_name:str,var_list:list,val_dic:dict,sw_form:str)->str:
     if sw_form=='pw':
         form='%28s = '
     elif sw_form=='ph':
@@ -545,7 +545,7 @@ def make_fstring_obj(obj_name,var_list,val_dic,sw_form):
     fstring+='/\n'
     return fstring
 
-def atom_position(atom,atomic_position):
+def atom_position(atom:list,atomic_position:list)->str:
     mat=get_cr_mat(num_brav,F)
     mat=np.linalg.inv(mat).T
     aposition=[[list(mat.dot(np.array(ap))) for ap in app] for app in atomic_position]
@@ -557,7 +557,7 @@ def atom_position(atom,atomic_position):
 
     return atom_string
 
-def get_cr_mat(num_brav,sw=T):
+def get_cr_mat(num_brav:int,sw=T):
     if num_brav in {1,6,8}: #Simple
         mat=np.identity(3)
     elif num_brav in {2,10}: #Face Centered
@@ -648,7 +648,7 @@ def get_cr_mat(num_brav,sw=T):
             exit()
     return mat
 
-def cell_parameter_stream(axis,deg):
+def cell_parameter_stream(axis,deg)->str:
     mat=get_cr_mat(num_brav)
     if ibrav==0 and sw_celldm:
         a_vec=list(mat)
@@ -661,7 +661,7 @@ def cell_parameter_stream(axis,deg):
 
     return cell_string
 
-def k_line_stream(k_num,k_list):
+def k_line_stream(k_num:int,k_list:list)->str:
     k_string='%d\n'%(k_num*(len(k_list)-1)+1)
     dk=1./k_num
     w=1.
@@ -674,7 +674,7 @@ def k_line_stream(k_num,k_list):
     k_string+='%11.8f %11.8f %11.8f'%tuple(k_list[-1][1])+wt+'\n'
     return k_string
 
-def k_cube_stream(k_num,w_sw,sw_wan):
+def k_cube_stream(k_num,w_sw,sw_wan:bool)->str:
     wfunc=lambda x,y,z:'\n' if x else '  %10.8f\n'%(1./z if y else 1.)
     if not isinstance(w_sw,bool):
         w_sw=False
@@ -718,7 +718,7 @@ def k_cube_stream(k_num,w_sw,sw_wan):
 
 #---------------------input file generators-------------------------------
 def make_pw_cp_in(calc,kconfig,restart="'from_scratch'"):
-    def atomic_parameters_stream(atom,atomic_position,UPF):
+    def atomic_parameters_stream(atom:list,atomic_position:list,UPF:list)->str:
         atom_string='\nATOMIC_SPECIES\n'
         for at,up in zip(atom,UPF):
             atom_string+=' %-2s %11.7f  %s\n'%(at,mass[at[:2]],up)
@@ -963,8 +963,8 @@ def make_pw2wan_in():
     write_file(fname,fstream)
 
 def make_win():
-    def win_strings(values,sname):
-        def format_val(a):
+    def win_strings(values,sname)->str:
+        def format_val(a)->str:
             if isinstance(a,float):
                 return '%7.4f'%a
             else:
@@ -978,7 +978,7 @@ def make_win():
             strings+=form%vs[0]+format_val(vs[1])+'\n'
         strings+='\n'
         return strings
-    def get_k_point_path():
+    def get_k_point_path()->str:
         p_name=lambda x: 'GAMMA' if x=='G' else x
         strings='begin Kpoint_Path\n'
         for kl1,kl2 in zip(k_list,k_list[1:]):
@@ -986,13 +986,13 @@ def make_win():
             strings+='%-5s'%p_name(kl2[0])+' %5.2f %5.2f %5.2f\n'%tuple(kl2[1])
         strings+='end Kpoint_Path\n\n'
         return strings
-    def get_projection():
+    def get_projection()->str:
         strings='begin projections\n'
         for prj in projection:
             strings+='%s:%s\n'%prj
         strings+='end projections\n\n'
         return strings
-    def get_grid(k_num):
+    def get_grid(k_num)->str:
         if isinstance(k_num,int):
             klist=tuple([k_num]*3)
         elif isinstance(k_num,list):
@@ -1183,7 +1183,7 @@ def make_cppp():
     fname='%s.cppp'%prefix
 
 #---------------------------- main ---------------------------------
-def main(prefix):
+def main(prefix:str):
     date()
     mpiexe=mpiopt+'mpirun -np %d '%mpi_num if sw_mpi else ''
     npool='-nk %d '%kthreads_num if kthreads_num!=0 else ''
