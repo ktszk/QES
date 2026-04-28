@@ -285,6 +285,8 @@ def get_bravs(space,ibrav:int):
                         num_brav=13
                     elif deg[1]!=90.:
                         num_brav=-13
+                    else:
+                        num_brav=13
             else: #P (Simple)
                 if space >194: #SC
                     num_brav=1
@@ -299,6 +301,8 @@ def get_bravs(space,ibrav:int):
                         num_brav=12
                     elif deg[1]!=90.:
                         num_brav=-12
+                    else:
+                        num_brav=12
                 else:
                     num_brav=14
         elif isinstance(space,str):
@@ -317,7 +321,7 @@ def get_bravs(space,ibrav:int):
             elif ('R' in space): #Trigonal
                 num_brav=5
             elif ('A' in space): #Base Center
-                pass
+                num_brav=9
             elif ('C' in space): #Base Center
                 num_brav=9
             else: #Simple
@@ -688,7 +692,7 @@ def k_cube_stream(k_num,w_sw,sw_wan:bool)->str:
                     k_string+='  %10.8f  %10.8f  %10.8f'%(dk*i,dk*j,dk*k)+wst
     elif isinstance(k_num,list):
         if len(k_num)==1:
-            dk=[1./knum[0]]*3
+            dk=[1./k_num[0]]*3
             kn=k_num*3
         if len(k_num)==2:
             dk=[1./kp for kp in k_num]
@@ -934,9 +938,9 @@ def make_prjwfc_in():
     fname='%s.prjwfc'%prefix
     filpdos='%s.pdos'%prefix
     var_prj=['prefix','outdir','Emin','Emax','DeltaE','ngauss','degauss','filpdos','pawproj']
-    val_prj={'prefix':prefix,'outdir':"'%s'"%outdir,'filpdos':"'%s'"%filpdos,
+    val_prj={'prefix':"'%s'"%prefix,'outdir':"'%s'"%outdir,'filpdos':"'%s'"%filpdos,
              'Emin':edos_win[0],'Emax':edos_win[1],'DeltaE':de,'ngauss':1,'degauss':dgs,
-             'pawproj':'.Ture.'}
+             'pawproj':'.True.'}
     fstream=''
     fs_prj=make_fstring_obj('projwfc',var_prj,val_prj,'prjwfc')
     fstream+=fs_prj
@@ -947,7 +951,7 @@ def make_bands_in():
     fstream=''
     filband='%s_bands.dat'%prefix
     var_bands=['prefix','outdir','filband']
-    val_bands={'prefix':prefix,'outdir':"'%s'"%outdir,'filband':filband}
+    val_bands={'prefix':"'%s'"%prefix,'outdir':"'%s'"%outdir,'filband':"'%s'"%filband}
     fs_bands=make_fstring_obj('bands',var_bands,val_bands,'bands')
     fstream=fstream+fs_bands
     write_file(fname,fstream)
@@ -1200,7 +1204,7 @@ def main(prefix:str):
             os_and_print(mpiexe+'pw.x '+npool+os_io(prefix,'scf'))
             date()
             for i in range(10):
-                fname='%s.%s.out'%(name,ext)
+                fname='%s.scf.out'%prefix
                 if os.path.exists(fname):
                     for f in open(fname,'r'):
                         if f.find('convergence NOT achieved after 100 iterations: stopping')!=-1:
