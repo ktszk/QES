@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 ### options for GE job maneger
 #$ -cwd
-#$ -V -S /usr/local/Python-2.7.12/bin/python
+#$ -V -S /usr/bin/python3
 #$ -N Name
 #$ -e out.e
 #$ -o out.o
@@ -622,6 +622,8 @@ def get_cr_mat(num_brav:int,sw=T):
             mat=np.array([[ .5, 0.,-.5],
                           [ r1, r2, 0.],
                           [ .5, 0., .5]])
+        else:
+            mat=np.identity(3)
     elif num_brav==14: #Triclinic
         if sw:
             phase=np.pi*deg[0]/180.
@@ -1327,6 +1329,9 @@ def main(prefix:str):
                 date()
 
 if __name__=="__main__":
+    if from_poscar:
+        axis,cry_ax,atom,atomic_position=read_poscar()
+        ibrav=0
     try: #detect k_list
         k_list
     except NameError:
@@ -1353,9 +1358,6 @@ if __name__=="__main__":
         elif sc_size[0]!=sc_size[2]:
             if num_brav in {1,2,3,5}:
                 space=1
-    if from_poscar:
-        axis,cry_ax,atom,atomic_position=read_poscar()
-        ibrav=0
     ibrav,num_brav=get_bravs(space,ibrav)
     try: #detect type_xc
         type_xc
